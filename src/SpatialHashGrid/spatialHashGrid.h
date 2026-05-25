@@ -134,6 +134,8 @@ struct SpatialHashGrid
 	{
 		found.size = 0;
 
+		std::clamp(position.x, 0.f, m_screenSize.size.x);
+		std::clamp(position.y, 0.f, m_screenSize.size.y);
 		const sf::Vector2<uint32_t> cIdx = posTo2dIdx(position);
 		if (!checkValidIndex(cIdx))
 			throw std::out_of_range("find() position argument out of range");
@@ -143,7 +145,12 @@ struct SpatialHashGrid
 		{
 			for (unsigned y = cIdx.y - 1; y <= cIdx.y + 1; y++)
 			{
-				const CollisionCell& cell = m_cells[idx2dTo1d({ x, y })];
+				// if the index is out of bounds, skip it
+				if (!checkValidIndex({ x, y }))
+					continue;
+
+				int cell_index = idx2dTo1d({ x, y });
+				const CollisionCell& cell = m_cells[cell_index];
 
 				for (unsigned i{0}; i < cell.objects_count; i++)
 					found.add(cell.objects[i]);

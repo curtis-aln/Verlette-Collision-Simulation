@@ -70,7 +70,7 @@ add_executable(SpatialHashGrid
     src/main.cpp
     src/circles/circles.cpp
 
-)
+ "src/utilities/camera.h" "src/simulation.h" "src/simulation.cpp" "src/settings.h" "src/utilities/random.h")
 
 
 # ── Include directories ───────────────────────────────────────────────────────
