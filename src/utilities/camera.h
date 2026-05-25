@@ -5,7 +5,7 @@
 #include <SFML/System/Vector2.hpp>
 
 
-class Camera
+struct Camera
 {
 public:
     sf::View m_view_{};
@@ -15,7 +15,6 @@ public:
 
     float m_current_zoom_ = 1.f;
 
-private:
     sf::RenderWindow* m_window_ = nullptr;
 
     // zoom
@@ -42,6 +41,7 @@ public:
         const auto dims = sf::Vector2f(m_window_->getSize());
         m_view_ = sf::View(sf::Rect<float>{{0.f, 0.f}, { dims.x, dims.y }});
         m_view_.setSize(dims / m_current_zoom_);
+
         update_window_view();
     }
 

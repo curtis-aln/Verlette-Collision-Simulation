@@ -7,13 +7,15 @@
 #include "circles/circles.hpp"
 
 #include "utilities/random.h"
-#include "utilities/zoomableVertexArray.hpp"
+#include "utilities/camera.h"
+#include "utilities/smooth_frame_rates.h"
 
 class Simulation : Settings
 {
-	sf::RenderWindow window{};
-	sf::Clock clock{};
+	sf::Vector2u size = { static_cast<unsigned int>(screenWidth), static_cast<unsigned int>(screenHeight) };
+	sf::RenderWindow window{ sf::VideoMode(size), "Collision Detection", sf::Style::Default };
 
+	bool running = true;
 	bool paused = false;
 	bool draw_grid = false;
 	bool mousePressed = false;
@@ -30,21 +32,27 @@ class Simulation : Settings
 
 
 	sf::VertexArray v_array{};
+	
+	FrameRateSmoothing<100> clock_{};
+	Camera camera{ &window, 1.f / scale_factor };
 
-	// Zooming
-	ZoomableVertexArray zoomedCircles{ &circles.m_circleArray, zoomStrength, screenWidth, screenHeight };
-	ZoomableVertexArray zoomedGrid{& v_array, zoomStrength, screenWidth, screenHeight};
+
 
 public:
 	Simulation();
 	void run();
 
 private:
-	void pollEvents();
 	void update();
 	void render();
 
 	void generateEntities(const int amount);
 
 	void setCaption();
+	void handle_events();
+	void dispatch_event(const sf::Event& event, const sf::Vector2f& cam_pos);
+	void handle_pause_toggle();
+	void handle_mouse_press(const sf::Vector2f& cam_pos);
+	void handle_mouse_release();
+	void handle_keyboard_events(const sf::Keyboard::Key& event_key_code);
 };
