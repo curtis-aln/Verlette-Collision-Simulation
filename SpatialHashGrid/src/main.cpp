@@ -122,13 +122,13 @@ void pollEvents(sf::RenderWindow& window, RunTimeVariables& runVars, Settings& s
             case sf::Keyboard::Num1:
                 settings.CellsX += settings.deltaGridRate;
                 settings.CellsY += settings.deltaGridRate;
-                grid.reSize(settings.CellsX, settings.CellsY);
+                grid.reSize(sf::FloatRect{ 0.0f, 0.0f, static_cast<float>(settings.CellsX), static_cast<float>(settings.CellsY) });
                 break;
 
             case sf::Keyboard::Num2:
                 settings.CellsX -= settings.deltaGridRate;
                 settings.CellsY -= settings.deltaGridRate;
-                grid.reSize(settings.CellsX, settings.CellsY);
+                grid.reSize(sf::FloatRect{ 0.0f, 0.0f, static_cast<float>(settings.CellsX), static_cast<float>(settings.CellsY) });
                 break;
             }
         }
@@ -166,7 +166,7 @@ int main()
         1920.0f,
         1080.0f
     );
-    settings.CellsX = calcCellsXY(settings.vertexReserve, settings.particles);
+    settings.CellsX = 1000;
     settings.CellsY = settings.CellsX;
 
 
@@ -179,8 +179,8 @@ int main()
     auto clock = sf::Clock::Clock();
 
     ArrayOfCircles circles(settings.particles, settings.entityRadius, settings.circleSides);
-    sf::Rect border{ 0.0f, 0.0f, settings.screenWidth, settings.screenHeight };
-    SpatialHashGrid grid(border, settings.CellsX, settings.CellsY, settings.vertexReserve);
+    sf::Rect<float> border{ 0.0f, 0.0f, settings.screenWidth, settings.screenHeight };
+    SpatialHashGrid grid{ border, {settings.CellsX, settings.CellsY} };
 
     std::vector<Entity> entities = generateEntities(
         settings.screenWidth, settings.screenHeight, settings.particles, settings.entityRadius, settings.maxSpeed, 
@@ -195,10 +195,12 @@ int main()
         getMousePositionFloat(*window)
     );
 
+    sf::VertexArray v_array{};
     // Zooming
     ZoomableVertexArray zoomedCircles(&circles.m_circleArray, settings.zoomStrength, settings.screenWidth, settings.screenHeight);
-    ZoomableVertexArray zoomedGrid(grid.getRenderGrid(), settings.zoomStrength, settings.screenWidth, settings.screenHeight);
+    ZoomableVertexArray zoomedGrid(&v_array, settings.zoomStrength, settings.screenWidth, settings.screenHeight);
 
+    
 
     // main game loop
     while (window->isOpen()) 
@@ -220,26 +222,26 @@ int main()
 
         if (!runVars.paused)
         {
-	        grid.resetGrid();
+	        grid.clear();
 
 	        // first loop is for adding the points
 	        for (int i{0}; i < entities.size(); i++)
 	        {
-	            grid.addPoint(i, entities[i].getPosition());
+	            grid.addAtom(entities[i].getPosition(), i);
 	        }
 
 
 	        // second loop is for querying the nearby
 	        for (Entity& entity : entities)
 	        {
-                std::vector<unsigned int> nearbyIndexes = grid.findNear(entity.p_position);
+                c_Vec& nearbyIndexes = grid.find(entity.p_position);
 
                 entity.p_nearby.clear();
-	        	entity.p_nearby.reserve(nearbyIndexes.size());
+	        	entity.p_nearby.reserve(nearbyIndexes.size);
 
-                for (const unsigned int index : nearbyIndexes)
+                for (unsigned i = 0; i < nearbyIndexes.size; i++)
                 {
-                    entity.p_nearby.emplace_back(&entities[index]);
+                    entity.p_nearby.emplace_back(&entities[nearbyIndexes.at(i)]);
                 }
 	        }
 
@@ -254,25 +256,9 @@ int main()
         setCaption(*window, clock);
         zoomedCircles.drawVertexArray(*window, &circles.m_circleArray);
         if (runVars.draw_grid)
-			zoomedGrid.drawVertexArray(*window, grid.getRenderGrid());
+			zoomedGrid.drawVertexArray(*window, &v_array);
         window->display();
 
         runVars.frameCount++;
     }
 }
-
-/*
-LOOP ALL:
-vector = [i0, i1, i2, i3]
-
-input_to_grid(vector)
-
-for entity in vector:
-    item.nearby = find_nearby(entity)
-
-for entity in vector:
-    entity.update()
-
-for entity in vector:
-    entity.death_check() // remove from vector check
- */

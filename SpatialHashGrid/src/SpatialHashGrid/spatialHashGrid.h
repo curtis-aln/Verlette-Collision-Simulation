@@ -198,6 +198,11 @@ struct SpatialHashGrid
 		m_renderGrid.update(vertices.data(), vertices.size(), 0);
 	}
 
+	sf::VertexBuffer* get_render_grid()
+	{
+		return &m_renderGrid;
+	}
+
 
 	void reSize(const sf::Rect<float> screenSize)
 	{
