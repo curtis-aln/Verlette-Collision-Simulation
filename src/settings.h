@@ -1,29 +1,36 @@
 #pragma once
 
 
-struct Settings
+struct SimulationSettings
 {
-    const unsigned int particles = 1'000;
-    const unsigned int vertexReserve = 100;
-    const unsigned int circleSides = 30;
-    const unsigned int deltaGridRate = 1;
+    inline static const unsigned int vertexReserve = 100;
 
-    const float maxSpeed = 5.0f;
-    const float entityRadius = 5.0f;
-    const float zoomStrength = 1.0f;
+    inline static const unsigned int circleSides = 15;
+    inline static const unsigned int deltaGridRate = 1;
 
-    const float screenWidth = 1600.0f;
-    const float screenHeight = 900.0f;
+    inline static const float maxSpeed = 5.0f;
+    
+    inline static const float zoomStrength = 1.0f;
 
+    inline static const float screen_width = 1600.0f;
+    inline static const float screen_height = 900.0f;
 
-    float scale_factor = 1.0f;
+    inline static float scale_factor = 10.0f;
+};
 
-	const float world_width = screenWidth * scale_factor;
-	const float world_height = screenHeight * scale_factor;
+struct ParticleSettings
+{
+    inline static const unsigned int particle_count = 100'000;
 
-    unsigned int CellsX = 30;
-    unsigned int CellsY = 30;
+    inline static const float world_width = SimulationSettings::screen_width * SimulationSettings::scale_factor;
+    inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
 
-	sf::Color colorActive = { 255, 0, 0 };
-	sf::Color colorInctive = { 255, 255, 255 };
+    inline static const float particle_radius = 5.0f;
+
+    inline static uint32_t CellsX = 300;
+    inline static uint32_t CellsY = 300;
+	inline static uint32_t cell_max_capacity = 25;
+
+    sf::Color colorActive = { 255, 0, 0 };
+    sf::Color colorInctive = { 255, 255, 255 };
 };

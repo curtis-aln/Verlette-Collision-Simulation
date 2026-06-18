@@ -1,18 +1,21 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 
-#include "settings.h"
-#include "entity.hpp"
-#include "SpatialHashGrid/spatialHashGrid.h"
-#include "circles/circles.hpp"
+#include "../settings.h"
+#include "../entity.hpp"
+#include "../spatial_grid/simple_spatial_grid.h"
 
-#include "utilities/random.h"
-#include "utilities/camera.h"
-#include "utilities/smooth_frame_rates.h"
+#include "../utilities/random.h"
+#include "../utilities/camera.h"
+#include "../utilities/smooth_frame_rates.h"
 
-class Simulation : Settings
+#include "particle_manager/particle_manager.h"
+
+inline static constexpr int frame_smoothing_count = 30;
+
+class Simulation : SimulationSettings
 {
-	sf::Vector2u size = { static_cast<unsigned int>(screenWidth), static_cast<unsigned int>(screenHeight) };
+	sf::Vector2u size = { static_cast<unsigned int>(screen_width), static_cast<unsigned int>(screen_height) };
 	sf::RenderWindow window{ sf::VideoMode(size), "Collision Detection", sf::Style::Default };
 
 	bool running = true;
@@ -22,18 +25,13 @@ class Simulation : Settings
 	unsigned long long frameCount = 0;
 	sf::Vector2f mousePosition{};
 
-	std::vector<Entity> entities{};
+	sf::Rect<float> border{ {0.0f, 0.0f}, {ParticleSettings::world_width, ParticleSettings::world_height} };
 
-	sf::Rect<float> border{ {0.0f, 0.0f}, {screenWidth, screenHeight} };
-
-	ArrayOfCircles circles{particles, entityRadius, circleSides};
-
-	SpatialHashGrid grid{ border, {CellsX, CellsY} };
-
+	ParticleManager particleManager{ &window, &border };
 
 	sf::VertexArray v_array{};
 	
-	FrameRateSmoothing<100> clock_{};
+	FrameRateSmoothing<frame_smoothing_count> clock_{};
 	Camera camera{ &window, 1.f / scale_factor };
 
 
@@ -45,8 +43,6 @@ public:
 private:
 	void update();
 	void render();
-
-	void generateEntities(const int amount);
 
 	void setCaption();
 	void handle_events();

@@ -55,14 +55,14 @@ namespace Random
     template<typename Type>
     inline sf::Vector2<Type> rand_pos_in_rect(const sf::Rect<Type>& rect)
     {
-        return { rand_range(rect.left, rect.left + rect.width),
-                rand_range(rect.top, rect.top + rect.height) };
+        return { rand_range(rect.position.x, rect.position.x + rect.size.x),
+                rand_range(rect.position.y, rect.position.y + rect.size.y) };
     }
 
     template<typename Type>
     sf::Vector2<Type> rand_pos_in_circle(const sf::Vector2<Type> center, const float radius)
     {
-        const sf::Rect<Type> rect = { center.x - radius, center.y - radius, radius * 2, radius * 2 };
+        const sf::Rect<Type> rect = { {center.x - radius, center.y - radius}, {radius * 2, radius * 2} };
         while (true)
         {
             const sf::Vector2<Type> pos = rand_pos_in_rect(rect);

@@ -68,9 +68,17 @@ set(IMGUI_DIR ${imgui_SOURCE_DIR} CACHE PATH "" FORCE)
 add_executable(SpatialHashGrid
  # ── Entry point
     src/main.cpp
-    src/circles/circles.cpp
+    src/rendering/heatmap.cpp 
+    src/rendering/PPS_renderer.cpp 
+    src/spatial_grid/spatial_grid_renderer.cpp 
+    src/particle_manager/particle_manager.cpp 
 
- "src/utilities/camera.h" "src/simulation.h" "src/simulation.cpp" "src/settings.h" "src/utilities/random.h" "src/utilities/smooth_frame_rates.h")
+    "src/utilities/camera.h" 
+    "src/simulation/simulation.h" 
+    "src/simulation/simulation.cpp" 
+    "src/settings.h" 
+    "src/utilities/random.h" 
+    "src/utilities/smooth_frame_rates.h" "src/particle_manager/particle_manager.h" "src/utilities/font.h")
 
 
 # ── Include directories ───────────────────────────────────────────────────────

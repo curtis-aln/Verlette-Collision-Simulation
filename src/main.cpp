@@ -15,7 +15,7 @@
 #include <ctime>
 #include <string>
 #include <sstream>
-#include "simulation.h"
+#include "simulation/simulation.h"
 
 int main()
 {
