@@ -114,8 +114,6 @@ void PPS_Renderer::render_heat_map(const SimSnapshot& snapshot,
 void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
     const Camera& camera, const float alpha)
 {
-    const auto& neighbourhood_count = snapshot.render.neighbourhood_count_;
-
     const auto  tex_size = static_cast<float>(texture.getSize().x);
     const float u1 = tex_size, v1 = tex_size;
 
@@ -123,18 +121,6 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
 	sf::Vector2i screen_pos = { static_cast<int>(screen_width_), static_cast<int>(screen_height_) };
     const sf::Vector2f bottom_right = camera.mapPixelToCoords(screen_pos);
 
- 
-    // Rebuild color cache when sim produced a new frame OR color scheme changed
-    if (m_colors_dirty_ || g_color_scheme_dirty)
-    {
-        m_cached_colors_.resize(ParticleSettings::particle_count);
-        for (size_t i = 0; i < ParticleSettings::particle_count; ++i)
-            m_cached_colors_[i] = interpolate_scheme(
-                static_cast<float>(neighbourhood_count[i]), g_color_scheme);
-
-        m_colors_dirty_ = false;
-        g_color_scheme_dirty = false;
-    }
 
     vertex_array.clear();
 
@@ -147,8 +133,7 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
             px_v > bottom_right.x || py_v > bottom_right.y)
             continue;
 
-        sf::Color col = m_cached_colors_[i];
-        col.a = static_cast<uint8_t>(alpha);
+        sf::Color col = sf::Color::White;
 
         vertex_array.append({ .position = { px_v - r, py_v - r }, .color = col, .texCoords = { 0.f, 0.f } });
         vertex_array.append({ .position = { px_v + r, py_v - r }, .color = col, .texCoords = { u1,  0.f } });

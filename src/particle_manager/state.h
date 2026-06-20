@@ -72,23 +72,16 @@ struct WorldStatistics
 // ─────────────────────────────────────────────────────────────────────────────
 struct RenderData
 {
-    alignas(64) std::vector<float>    positions_x{};
-    alignas(64) std::vector<float>    positions_y{};
-    alignas(64) std::vector<float>    angles_{};
-    alignas(64) std::vector<float>    cos_angles_{};
-    alignas(64) std::vector<float>    sin_angles_{};
-    alignas(64) std::vector<uint16_t> neighbourhood_count_{};
-    alignas(64) std::vector<sf::Color> colors{};
+    alignas(64) std::vector<float> positions_x;
+    alignas(64) std::vector<float> positions_y;
+    alignas(64) std::vector<sf::Color>    colors;
+    alignas(64) std::vector<float>        radii;
 
-    RenderData()
+    void reserve(const int max_cells)
     {
-        constexpr int n = ParticleSettings::particle_count;
-        positions_x.resize(n);
-        positions_y.resize(n);
-        colors.resize(n);
-        angles_.resize(n);
-        cos_angles_.resize(n);
-        sin_angles_.resize(n);
-        neighbourhood_count_.resize(n);
+        positions_x.resize(max_cells);
+        positions_y.resize(max_cells);
+        colors.resize(max_cells);
+        radii.resize(max_cells);
     }
 };

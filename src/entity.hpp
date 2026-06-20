@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
+#include "settings.h"
 
 class Entity
 {
@@ -10,24 +11,27 @@ public:
 	sf::Vector2f position_{};
 	sf::Vector2f velocity_{};
 
-	sf::Color m_colorActive{};
-	sf::Color m_colorInactive{};
+	sf::Color m_colorActive = sf::Color::Blue;
+	sf::Color m_colorInactive = sf::Color::Red;
 
-	const float  m_radius{};
-	const float  m_radiusSquared{};
+	const float  m_radius = ParticleSettings::particle_radius;
+	const float  m_radiusSquared = m_radius * m_radius;
 	const float  m_maxSpeed{};
 
-	const sf::Rect<float>& m_border{};
+	const sf::Rect<float>* m_border{};
 
 	bool collided = false;
 
 	
 	// constructor and destructor
-	explicit Entity(const sf::Vector2f position = {0, 0}, const sf::Vector2f velocity = { 0, 0 }, const sf::Color colorActive = { 0, 0, 0 }, 
-	                const sf::Color colorInactive = { 0, 0, 0 }, const float interactionRadius=1, const unsigned int _id=1, 
-	                const float maxSpeed = 1, const sf::Rect<float>& border = { {0, 0}, {0, 0} })
-		: velocity_(velocity), m_colorActive(colorActive), m_colorInactive(colorInactive), m_radius(interactionRadius),
-		m_radiusSquared(m_radius * m_radius), m_maxSpeed(maxSpeed), m_border(border), position_(position), id_(_id) 
+	explicit Entity(const sf::Vector2f position = {0, 0}, const sf::Vector2f velocity = { 0, 0 }, const unsigned int _id=1, 
+	                const float maxSpeed = 1, const sf::Rect<float>* border = nullptr)
+		: 
+		velocity_(velocity), 
+		m_maxSpeed(maxSpeed), 
+		m_border(border), 
+		position_(position), 
+		id_(_id) 
 	{	
 	}
 
@@ -36,7 +40,6 @@ public:
 
 	void update()
 	{
-
 		speed_limit();
 		updatePosition();
 		borderCollision();
@@ -53,8 +56,8 @@ private:
 	{
 		const float buffer = m_radius;
 
-		const bool x_out_of_bounds = position_.x < m_border.position.x + buffer || position_.x > m_border.position.x + m_border.size.x - buffer;
-		const bool y_out_of_bounds = position_.y < m_border.position.y + buffer || position_.y > m_border.position.y + m_border.size.y - buffer;
+		const bool x_out_of_bounds = position_.x < m_border->position.x + buffer || position_.x > m_border->position.x + m_border->size.x - buffer;
+		const bool y_out_of_bounds = position_.y < m_border->position.y + buffer || position_.y > m_border->position.y + m_border->size.y - buffer;
 
 		if (x_out_of_bounds) {
 			velocity_.x *= -1;
@@ -64,8 +67,8 @@ private:
 			velocity_.y *= -1;
 		}
 
-		position_.x = std::max(m_border.position.x + buffer, std::min(position_.x, m_border.position.x + m_border.size.x - buffer));
-		position_.y = std::max(m_border.position.y + buffer, std::min(position_.y, m_border.position.y + m_border.size.y - buffer));
+		position_.x = std::max(m_border->position.x + buffer, std::min(position_.x, m_border->position.x + m_border->size.x - buffer));
+		position_.y = std::max(m_border->position.y + buffer, std::min(position_.y, m_border->position.y + m_border->size.y - buffer));
 	}
 
 

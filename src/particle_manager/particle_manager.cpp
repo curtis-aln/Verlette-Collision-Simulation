@@ -10,16 +10,19 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 
 void ParticleManager::init_entities()
 {
+	std::cout << "init entities\n";
 	for (int i = 0; i < ParticleSettings::particle_count; ++i)
 	{
 		Entity* entity = entities_.emplace(true);
 		entity->position_ = Random::rand_pos_in_rect(*bounds_);
 		entity->velocity_ = Random::rand_vector(-1.f, 1.f);
+		entity->m_border = bounds_;
 	}
 }
 
 void ParticleManager::update_particles()
 {
+	stats.iterations_++;
 	add_particles_to_grid();
 	resolve_collisions();
 
@@ -29,14 +32,17 @@ void ParticleManager::update_particles()
 	}
 }
 
-void ParticleManager::render_particles()
-{
-	//renderer.render(window_, allCircles, entities_);
-}
-
-
 void ParticleManager::add_particles_to_grid()
 {
+	int n = entities_.size();
+	render.positions_x.resize(n);
+	render.positions_y.resize(n);
+	render.radii.resize(n);
+	render.colors.resize(n);
+	stats.cell_particle_count = n;
+
+	grid.clear();
+
 	int i = 0;
 	for (Entity* entity : entities_)
 	{
@@ -45,6 +51,8 @@ void ParticleManager::add_particles_to_grid()
 
 		render.positions_x[i] = pos.x;
 		render.positions_y[i] = pos.y;
+		render.radii[i] = entity->m_radius;
+		render.colors[i] = entity->collided ? entity->m_colorActive : entity->m_colorInactive;
 		++i;
 	}
 }
@@ -86,9 +94,18 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 {
 	const int n = entities_.size();
 
+	snapshot.stats.cell_particle_count = n;
+
 	snapshot.toggles = toggles;
 	snapshot.stats = stats;
 
+	snapshot.render.positions_x.resize(n);
+	snapshot.render.positions_y.resize(n);
+	snapshot.render.colors.resize(n);
+	snapshot.render.radii.resize(n);
+
 	std::memcpy(snapshot.render.positions_x.data(), render.positions_x.data(), n * sizeof(float));
 	std::memcpy(snapshot.render.positions_y.data(), render.positions_y.data(), n * sizeof(float));
+	std::memcpy(snapshot.render.colors.data(), render.colors.data(), n * sizeof(sf::Color));
+	std::memcpy(snapshot.render.radii.data(), render.radii.data(), n * sizeof(float));
 }

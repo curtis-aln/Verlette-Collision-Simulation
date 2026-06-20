@@ -35,6 +35,7 @@ class Simulation : SimulationSettings
 	sf::Rect<float> border{ {0.0f, 0.0f}, {ParticleSettings::world_width, ParticleSettings::world_height} };
 
 	ParticleManager particleManager{ &window, &border };
+	PPS_Renderer renderer{ &window };
 
 	sf::VertexArray v_array{};
 	

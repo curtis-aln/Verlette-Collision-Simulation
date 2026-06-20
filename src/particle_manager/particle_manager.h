@@ -14,7 +14,6 @@ class ParticleManager : ParticleSettings
 	o_vector<Entity> entities_;
 	sf::RenderWindow* window_;
 	sf::Rect<float>* bounds_;
-	PPS_Renderer renderer{ window_ };
 
 	SimpleSpatialGrid grid{ CellsX, CellsY, cell_max_capacity, world_width, world_height };
 
@@ -29,7 +28,6 @@ public:
 	void init_entities();
 
 	void update_particles();
-	void render_particles();
 	void fill_snapshot(SimSnapshot& snapshot);
 
 private:

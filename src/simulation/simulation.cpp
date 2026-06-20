@@ -49,7 +49,6 @@ void Simulation::run()
 
     while (running)
     {
-        handle_events();
         render();
     }
 
@@ -65,8 +64,13 @@ void Simulation::update()
 
 	particleManager.update_particles();
 
+    // Package results into the triple buffer
     SimSnapshot& snap = m_sim_buffer_.get_write_buffer();
+
+    // Filling the snapshot with information
     particleManager.fill_snapshot(snap);
+   
+    m_sim_buffer_.publish();
 }
 
 
@@ -85,7 +89,7 @@ void Simulation::render()
 
     window.clear();
 
-    particleManager.render_particles();
+	renderer.render(snap, camera);
 
     handle_imGUI(snap, dt);
 
