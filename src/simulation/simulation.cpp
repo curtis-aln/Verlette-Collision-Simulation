@@ -69,6 +69,7 @@ void Simulation::update()
 
     // Filling the snapshot with information
     particleManager.fill_snapshot(snap);
+	snap.stats.fps = static_cast<float>(clock_.get_average_frame_rate());
    
     m_sim_buffer_.publish();
 }

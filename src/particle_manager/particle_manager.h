@@ -7,6 +7,7 @@
 #include "../spatial_grid/simple_spatial_grid.h"
 
 #include "state.h"
+#include <utilities/smooth_frame_rates.h>
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
 class ParticleManager : ParticleSettings
@@ -16,6 +17,8 @@ class ParticleManager : ParticleSettings
 	sf::Rect<float>* bounds_;
 
 	SimpleSpatialGrid grid{ CellsX, CellsY, cell_max_capacity, world_width, world_height };
+
+	FrameRateSmoothing<30> frame_rate_smoothing_{};
 
 
 public:

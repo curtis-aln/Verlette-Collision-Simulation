@@ -22,6 +22,8 @@ void ParticleManager::init_entities()
 
 void ParticleManager::update_particles()
 {
+	frame_rate_smoothing_.update_frame_rate();
+	stats.updating_fps = frame_rate_smoothing_.get_average_frame_rate();
 	stats.iterations_++;
 	add_particles_to_grid();
 	resolve_collisions();
