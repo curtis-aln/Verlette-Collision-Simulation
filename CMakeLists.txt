@@ -85,7 +85,7 @@ add_executable(SpatialHashGrid
     "src/particle_manager/particle_manager.h" 
     "src/utilities/font.h" 
     "src/simulation/imgui/imgui_handling.cpp" 
-    "src/simulation/imgui/tabs/i_tab.h" "src/utilities/stopwatch.h")
+    "src/simulation/imgui/tabs/i_tab.h" "src/utilities/stopwatch.h" "src/particle_manager/collision.cpp")
 
 
 # ── Include directories ───────────────────────────────────────────────────────
@@ -135,3 +135,11 @@ if(MSVC)
         $<$<CONFIG:Release>:/Z7>         # embed debug info in .obj for Release (no .pdb)
     )
 endif()
+
+# ── Post-build: copy media assets next to the executable ─────────────────────
+add_custom_command(TARGET SpatialHashGrid POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/media"
+        "$<TARGET_FILE_DIR:SpatialHashGrid>/media"
+    COMMENT "Copying media assets..."
+)

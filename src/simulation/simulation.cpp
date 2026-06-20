@@ -90,7 +90,11 @@ void Simulation::render()
 
     window.clear();
 
+	if (snap.toggles.draw_grid)
+		particleManager.render_grid(camera.get_world_mouse_pos());
+
 	renderer.render(snap, camera);
+
 
     handle_imGUI(snap, dt);
 
@@ -219,7 +223,7 @@ void Simulation::handle_keyboard_events(const sf::Keyboard::Key& event_key_code)
    
 
     case sf::Keyboard::Key::G:
-        draw_grid = not draw_grid;
+        particleManager.toggles.draw_grid = not particleManager.toggles.draw_grid;
         break;
 
     default: break;

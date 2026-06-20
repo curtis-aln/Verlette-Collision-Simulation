@@ -15,23 +15,23 @@ struct SimulationSettings
     inline static const float screen_width = 1600.0f;
     inline static const float screen_height = 900.0f;
 
-    inline static float scale_factor = 10.0f;
+    inline static float scale_factor = 200.0f;
 };
 
 struct ParticleSettings
 {
     inline static unsigned initial_thread_count = 15;
 
-    inline static const unsigned int particle_count = 100'000;
+    inline static const unsigned int particle_count = 1'200'300;
 
     inline static const float world_width = SimulationSettings::screen_width * SimulationSettings::scale_factor;
     inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
 
-    inline static const float particle_radius = 5.0f;
+    inline static const float particle_radius = 35.0f;
 
-    inline static uint32_t CellsX = 300;
-    inline static uint32_t CellsY = 300;
-	inline static uint32_t cell_max_capacity = 25;
+    inline static uint32_t CellsX = 900;
+    inline static uint32_t CellsY = 900;
+	inline static uint32_t cell_max_capacity = 10;
 
     sf::Color colorActive = { 255, 0, 0 };
     sf::Color colorInctive = { 255, 255, 255 };

@@ -18,6 +18,7 @@
 #include "context/triple_buffer.h"
 
 #include "imgui/control_panel.h"
+#include <functional>
 
 inline static constexpr int frame_smoothing_count = 30;
 
@@ -36,6 +37,7 @@ class Simulation : SimulationSettings
 
 	ParticleManager particleManager{ &window, &border };
 	PPS_Renderer renderer{ &window };
+
 
 	sf::VertexArray v_array{};
 	

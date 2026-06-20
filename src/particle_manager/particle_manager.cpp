@@ -2,10 +2,13 @@
 #include "../utilities/random.h"
 #include <spatial_grid/simple_spatial_grid.h>
 
+thread_local FixedSpan<uint32_t> ParticleManager::tl_nearby_ids{ 25 };
+
 ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds)
 	: window_(window), bounds_(bounds), entities_(ParticleSettings::particle_count)
 {
 	init_entities();
+	init_collision_jobs();
 }
 
 void ParticleManager::init_entities()
@@ -16,7 +19,6 @@ void ParticleManager::init_entities()
 		Entity* entity = entities_.emplace(true);
 		entity->position_ = Random::rand_pos_in_rect(*bounds_);
 		entity->velocity_ = Random::rand_vector(-1.f, 1.f);
-		entity->m_border = bounds_;
 	}
 }
 
@@ -27,20 +29,49 @@ void ParticleManager::update_particles()
 	stats.iterations_++;
 	add_particles_to_grid();
 	resolve_collisions();
-
+	
 	for (Entity* entity : entities_)
 	{
 		entity->update();
+		sf::Vector2f& position_ = entity->position_;
+		sf::Vector2f& velocity_ = entity->velocity_;
+
+		const float buffer = particle_radius;
+
+		const bool x_out_of_bounds = position_.x < bounds_->position.x + buffer || position_.x > bounds_->position.x + bounds_->size.x - buffer;
+		const bool y_out_of_bounds = position_.y < bounds_->position.y + buffer || position_.y > bounds_->position.y + bounds_->size.y - buffer;
+
+		if (x_out_of_bounds) {
+			velocity_.x *= -1;
+		}
+
+		if (y_out_of_bounds) {
+			velocity_.y *= -1;
+		}
+
+		position_.x = std::max(bounds_->position.x + buffer, std::min(position_.x, bounds_->position.x + bounds_->size.x - buffer));
+		position_.y = std::max(bounds_->position.y + buffer, std::min(position_.y, bounds_->position.y + bounds_->size.y - buffer));
 	}
+}
+
+
+void ParticleManager::render_grid(sf::Vector2f query_pos)
+{
+	grid_renderer_.render(*window_, query_pos, 200);
 }
 
 void ParticleManager::add_particles_to_grid()
 {
 	int n = entities_.size();
+
 	render.positions_x.resize(n);
 	render.positions_y.resize(n);
 	render.radii.resize(n);
 	render.colors.resize(n);
+	entity_velocities_.resize(n);
+	collision_resolutions.resize(n);
+	velocity_resolutions.resize(n);
+
 	stats.cell_particle_count = n;
 
 	grid.clear();
@@ -53,8 +84,11 @@ void ParticleManager::add_particles_to_grid()
 
 		render.positions_x[i] = pos.x;
 		render.positions_y[i] = pos.y;
-		render.radii[i] = entity->m_radius;
-		render.colors[i] = entity->collided ? entity->m_colorActive : entity->m_colorInactive;
+		render.radii[i] = particle_radius;
+		render.colors[i] = sf::Color::White;
+		entity_velocities_[i] = entity->velocity_;
+		velocity_resolutions[i] = { 0.f, 0.f };
+		collision_resolutions[i] = { 0.f, 0.f };
 		++i;
 	}
 }
@@ -62,32 +96,15 @@ void ParticleManager::add_particles_to_grid()
 
 void ParticleManager::resolve_collisions()
 {
-	FixedSpan<obj_idx> nearbyIndexes{ 25 };
+	calculate_collision_resolutions();
 
+	int idx = 0;
 	for (Entity* entity : entities_)
 	{
-		const sf::Vector2f pos = entity->getPosition();
+		entity->position_ += collision_resolutions[idx];
+		entity->velocity_ += velocity_resolutions[idx];
 
-		nearbyIndexes.clear();
-		grid.find(pos.x, pos.y, &nearbyIndexes);
-
-		// resolving the collisions here
-		for (int i = 0; i < nearbyIndexes.count; ++i)
-		{
-			Entity* otherEntity = entities_.at(nearbyIndexes[i]);
-			if (entity->id_ != otherEntity->id_)
-			{
-				const sf::Vector2f delta = otherEntity->position_ - entity->position_;
-				const float distSquared = delta.x * delta.x + delta.y * delta.y;
-				if (distSquared <= entity->m_radiusSquared * 2)
-				{
-					// Collision detected, handle it here
-					// For example, you can change the color of the entities
-					entity->collided = true;
-					otherEntity->collided = true;
-				}
-			}
-		}
+		idx++;
 	}
 }
 
