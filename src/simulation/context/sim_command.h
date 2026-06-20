@@ -2,7 +2,7 @@
 #include <mutex>
 #include <queue>
 
-#include "../../particle_system/state.h"
+#include "../../particle_manager/state.h"
 
 enum class CommandType
 {

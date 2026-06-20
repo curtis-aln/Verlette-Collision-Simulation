@@ -11,6 +11,12 @@
 
 #include "particle_manager/particle_manager.h"
 
+#include "context/sim_command.h"
+#include "context/sim_snapshot.h"
+#include "context/triple_buffer.h"
+
+#include "imgui/control_panel.h"
+
 inline static constexpr int frame_smoothing_count = 30;
 
 class Simulation : SimulationSettings
@@ -18,7 +24,6 @@ class Simulation : SimulationSettings
 	sf::Vector2u size = { static_cast<unsigned int>(screen_width), static_cast<unsigned int>(screen_height) };
 	sf::RenderWindow window{ sf::VideoMode(size), "Collision Detection", sf::Style::Default };
 
-	bool running = true;
 	bool paused = false;
 	bool draw_grid = false;
 	bool mousePressed = false;
@@ -34,7 +39,19 @@ class Simulation : SimulationSettings
 	FrameRateSmoothing<frame_smoothing_count> clock_{};
 	Camera camera{ &window, 1.f / scale_factor };
 
+	// ── Triple-buffer (sim → render, lock-free) ───────────────────────────────
+	TripleBuffer<SimSnapshot> m_sim_buffer_{ ParticleSettings::particle_count };
 
+	// ── Command queue (render → sim, mutex-protected) ─────────────────────────
+	std::mutex             m_cmd_mutex{};
+	std::queue<SimCommand> m_commands{};
+
+	// ── Threading ─────────────────────────────────────────────────────────────
+	std::thread       m_sim_thread_;
+	std::atomic<bool> running{ true };
+
+	// ── ImGui ─────────────────────────────────────────────────────────────────
+	ControlPanel m_control_panel_;
 
 public:
 	Simulation();
@@ -51,4 +68,7 @@ private:
 	void handle_mouse_press(const sf::Vector2f& cam_pos);
 	void handle_mouse_release();
 	void handle_keyboard_events(const sf::Keyboard::Key& event_key_code);
+
+
+	void handle_imGUI(const SimSnapshot& snap, float dt);
 };

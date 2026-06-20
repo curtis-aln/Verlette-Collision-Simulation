@@ -20,6 +20,8 @@ struct SimulationSettings
 
 struct ParticleSettings
 {
+    inline static unsigned initial_thread_count = 15;
+
     inline static const unsigned int particle_count = 100'000;
 
     inline static const float world_width = SimulationSettings::screen_width * SimulationSettings::scale_factor;
