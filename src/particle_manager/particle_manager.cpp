@@ -74,3 +74,9 @@ void ParticleManager::resolve_collisions()
 		}
 	}
 }
+
+
+void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
+{
+
+}

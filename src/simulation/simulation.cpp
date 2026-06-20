@@ -1,41 +1,74 @@
 #include "simulation.h"
 #include <iostream>
 
+#include "imgui-SFML.h"
+#include "imgui.h"
+
 inline static constexpr int render_frame_rate = 144;
 inline static constexpr int vysnc = false;
 inline static constexpr float vel_var = -2.f;
 
 Simulation::Simulation()
 {
+    init_window();
+    init_camera();
+    init_imGUI();
+}
+
+void Simulation::init_window()
+{
     window.setFramerateLimit(render_frame_rate);
     window.setVerticalSyncEnabled(vysnc);
     window.resetGLStates();
+    window.setView(window.getDefaultView());
+}
 
+void Simulation::init_camera()
+{
     clock_.update_frame_rate();
     camera.m_mouse_prev_ = sf::Vector2f(sf::Mouse::getPosition(window));
+}
 
-    window.setView(window.getDefaultView());
+// ── ImGui init ────────────────────────────────────────────────────────────────
+void Simulation::init_imGUI()
+{
+    if (!ImGui::SFML::Init(window))
+        std::cerr << "[ERROR]: Failed to initialize ImGui-SFML\n";
+
+    ImGui::GetIO().FontGlobalScale = 1.0f;
 }
 
 
 void Simulation::run()
 {
-    // main game loop
+    m_sim_thread_ = std::thread([this]
+        {
+            while (running)
+                update();
+        });
+
     while (running)
     {
-        if (!paused)
-            update();
-        
+        handle_events();
         render();
     }
+
+    m_sim_thread_.join();
+    ImGui::SFML::Shutdown();
 }
 
 void Simulation::update()
 {
+    resolve_modifications();
+
     frameCount++;
 
 	particleManager.update_particles();
+
+    SimSnapshot& snap = m_sim_buffer_.get_write_buffer();
+    particleManager.fill_snapshot(snap);
 }
+
 
 void Simulation::render()
 {
@@ -73,6 +106,48 @@ void Simulation::handle_events()
 
 	const float dt = clock_.get_delta_time();
     camera.update(dt);
+}
+
+
+// ── Command dispatch ──────────────────────────────────────────────────────────
+void Simulation::resolve_modifications()
+{
+    std::queue<SimCommand> local;
+    {
+        std::lock_guard<std::mutex> lock(m_cmd_mutex);
+        std::swap(local, m_commands);
+    }
+
+    while (!local.empty())
+    {
+        SimCommand cmd = std::move(local.front());
+        local.pop();
+
+        switch (cmd.type)
+        {
+            // ── Toggles ───────────────────────────────────────────────────────────
+        case CommandType::SetToggles:
+            particleManager.toggles = cmd.toggles;
+            break;
+
+            // ── Reset ─────────────────────────────────────────────────────────────
+        case CommandType::ResetSimulation:
+            //particle_system_.init_grid_positioning();
+            break;
+
+        case CommandType::RandomizeSimulation:
+           // particle_system_.randomize_sim();
+            break;
+
+        case CommandType::SetThreadCount:
+            //particle_system_.set_thread_count(cmd.int_val);
+
+            break;
+
+        default:
+            break;
+        }
+    }
 }
 
 

@@ -6,6 +6,7 @@
 #include "../rendering/PPS_renderer.h"
 #include "../spatial_grid/simple_spatial_grid.h"
 
+#include "state.h"
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
 class ParticleManager : ParticleSettings
@@ -19,13 +20,17 @@ class ParticleManager : ParticleSettings
 
 
 public:
+	RenderData render{};
+	WorldToggles toggles{};
+	WorldStatistics stats{};
+
 	ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds);
 
 	void init_entities();
 
 	void update_particles();
 	void render_particles();
-
+	void fill_snapshot(SimSnapshot& snapshot);
 
 private:
 	void add_particles_to_grid();

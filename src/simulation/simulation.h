@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <imgui-SFML.h>
 
 #include "../settings.h"
 #include "../entity.hpp"
@@ -55,6 +56,9 @@ class Simulation : SimulationSettings
 
 public:
 	Simulation();
+	void init_window();
+	void init_camera();
+	void init_imGUI();
 	void run();
 
 private:
@@ -63,6 +67,7 @@ private:
 
 	void setCaption();
 	void handle_events();
+	void resolve_modifications();
 	void dispatch_event(const sf::Event& event, const sf::Vector2f& cam_pos);
 	void handle_pause_toggle();
 	void handle_mouse_press(const sf::Vector2f& cam_pos);
