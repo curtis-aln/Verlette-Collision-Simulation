@@ -62,8 +62,8 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
         { static_cast<int>(screen_width_), 0 }).x;
     const float visible_world_width = right - left;
 
-    const float transition_thresh_begin = 100.f * ParticleSettings::particle_radius;
-    const float transition_thresh_end = 200.f * ParticleSettings::particle_radius;
+    const float transition_thresh_begin = 300.f * ParticleSettings::particle_radius;
+    const float transition_thresh_end = 500.f * ParticleSettings::particle_radius;
     const float diff = transition_thresh_end - transition_thresh_begin;
 
     const auto& tgl = snapshot.toggles;

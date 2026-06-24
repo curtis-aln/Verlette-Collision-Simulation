@@ -58,7 +58,7 @@ void ControlPanel::draw(const SimSnapshot& snap, SimCtx& ctx, float dt)
 
     // Title bar
     ImGui::PushStyleColor(ImGuiCol_Text, { 0.72f, 0.84f, 1.00f, 1.f });
-    ImGui::Text("Primordial Particle System");
+    ImGui::Text("Collision Simulation");
     ImGui::PopStyleColor();
 
     ImGui::Spacing();

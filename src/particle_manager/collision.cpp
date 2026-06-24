@@ -119,18 +119,13 @@ void ParticleManager::update_protozoa_cell(const int protozoa_cell_index, const 
 
 void ParticleManager::handle_collision_resolutions()
 {
-	// Processing collisions sequentually avoids data races in the collision detection section of the code
-	// Todo - Computations can be halfed here somehow
 	for (CollisionVector& collision_vector : collision_indexes)
 	{
-		for (int i = 0; i < collision_vector.size_; ++i)
+		for (int i = 0; i < collision_vector.size_; i++)
 		{
-			// Retriving the pair that was
 			CollisionVector::CollisionPair& pair = collision_vector.collision_pairs_[i];
 			resolve_pair_collision(pair.first, pair.second);
 		}
-		
-		// Clearing the vector for the next iteration
 		collision_vector.clear();
 	}
 }

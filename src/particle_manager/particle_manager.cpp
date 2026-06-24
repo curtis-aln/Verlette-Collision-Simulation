@@ -37,6 +37,7 @@ void ParticleManager::update_particles()
 	add_particles_to_grid();        // Particles get added to the spatial grid
 	run_collision_detection();      // Overlapping particles are added to a container
 	handle_collision_resolutions(); // Overlapping particles are resolved
+	++resolution_frame_;
 	
 	for (Entity* entity : entities_)
 	{
@@ -44,7 +45,7 @@ void ParticleManager::update_particles()
 		sf::Vector2f& velocity_ = entity->velocity_;
 
 		position_ += velocity_;
-		velocity_ *= 0.995f;
+		velocity_ *= 0.99995f;
 
 		const float buffer = particle_radius;
 
@@ -73,31 +74,30 @@ void ParticleManager::render_grid(sf::Vector2f query_pos)
 
 void ParticleManager::add_particles_to_grid()
 {
-	int n = entities_.size();
+	const int n = entities_.size();
+	const int frame_parity = resolution_frame_ & 1;
 
 	render.positions_x.resize(n);
 	render.positions_y.resize(n);
 	render.radii.resize(n);
 	render.colors.resize(n);
-	entity_velocities_.resize(n);
 
 	stats.cell_particle_count = n;
-
 	grid.clear();
 
 	int i = 0;
 	for (Entity* entity : entities_)
 	{
 		const sf::Vector2f pos = entity->position_;
-		grid.add_object(pos.x, pos.y, i);
 
 		render.positions_x[i] = pos.x;
 		render.positions_y[i] = pos.y;
 		render.radii[i] = particle_radius;
-
 		render.colors[i] = entity->color_;
 
-		entity_velocities_[i] = entity->velocity_;
+		// only add this particle to the grid if it matches this frame's parity
+		//if ((i & 1) == frame_parity)
+			grid.add_object(pos.x, pos.y, i);
 
 		++i;
 	}
@@ -105,7 +105,7 @@ void ParticleManager::add_particles_to_grid()
 
 void ParticleManager::repel_system_from_point(const sf::Vector2f point)
 {
-	static float magnitude = 22.f;
+	static float magnitude = 42.f;
 	static float radius = ParticleSettings::particle_radius * 20.f;
 	static float rad_sq = radius * radius;
 

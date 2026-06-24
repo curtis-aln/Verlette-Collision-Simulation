@@ -24,7 +24,7 @@ struct alignas(64) CollisionVector
 	int size_ = 0; // determines the active indexes in the collision_pair vector
 
 	// a manual padding technique to force the struct to occupy exactly one 64-byte cache line
-	char padding_[64 - sizeof(std::vector<CollisionPair>) - sizeof(int)];
+	char padding_[64 - sizeof(std::vector<CollisionPair>) - sizeof(int)] = {};
 	
 	CollisionVector(int reserve)
 	{
@@ -70,6 +70,7 @@ class ParticleManager : ParticleSettings
 	std::vector<CollisionVector> collision_indexes{};
 
 	// ---------------------------
+	int resolution_frame_ = 0;  // toggles 0/1 each frame
 
 public:
 	RenderData render{};
