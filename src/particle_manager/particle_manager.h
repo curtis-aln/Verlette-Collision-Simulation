@@ -13,7 +13,7 @@
 #include "../utilities/thread_pool.h"
 #include <functional>
 
-inline static constexpr int nearby_ids_max = 155;
+inline static const int nearby_ids_max = ParticleSettings::cell_max_capacity * 9;
 
 
 // This is a basic datastructure which allows the adding and removing of collision indexes without memory reallocation
