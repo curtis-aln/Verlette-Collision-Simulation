@@ -62,8 +62,8 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
         { static_cast<int>(screen_width_), 0 }).x;
     const float visible_world_width = right - left;
 
-    const float transition_thresh_begin = 800.f * ParticleSettings::particle_radius;
-    const float transition_thresh_end = 1400.f * ParticleSettings::particle_radius;
+    const float transition_thresh_begin = 100.f * ParticleSettings::particle_radius;
+    const float transition_thresh_end = 200.f * ParticleSettings::particle_radius;
     const float diff = transition_thresh_end - transition_thresh_begin;
 
     const auto& tgl = snapshot.toggles;
@@ -133,7 +133,8 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
             px_v > bottom_right.x || py_v > bottom_right.y)
             continue;
 
-        sf::Color col = sf::Color::White;
+        sf::Color col = snapshot.render.colors[i];
+        col.a = alpha;
 
         vertex_array.append({ .position = { px_v - r, py_v - r }, .color = col, .texCoords = { 0.f, 0.f } });
         vertex_array.append({ .position = { px_v + r, py_v - r }, .color = col, .texCoords = { u1,  0.f } });

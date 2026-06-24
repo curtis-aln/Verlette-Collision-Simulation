@@ -206,7 +206,16 @@ void Simulation::handle_pause_toggle()
 
 void Simulation::handle_mouse_press(const sf::Vector2f& cam_pos)
 {
-    camera.begin_pan();  // start pan only if we didn't click an organism
+	if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+	{
+        camera.begin_pan(); 
+	}
+    else if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right))
+    {
+        // push entities
+        particleManager.repel_system_from_point(camera.get_world_mouse_pos());
+    }
+    
 }
 
 void Simulation::handle_mouse_release()

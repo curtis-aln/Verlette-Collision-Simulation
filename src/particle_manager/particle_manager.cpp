@@ -2,23 +2,27 @@
 #include "../utilities/random.h"
 #include <spatial_grid/simple_spatial_grid.h>
 
-thread_local FixedSpan<uint32_t> ParticleManager::tl_nearby_ids{ 25 };
+thread_local FixedSpan<uint32_t> ParticleManager::tl_nearby_ids{ 155 };
 
 ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds)
 	: window_(window), bounds_(bounds), entities_(ParticleSettings::particle_count)
 {
 	init_entities();
 	init_collision_jobs();
+
+	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count));
 }
 
 void ParticleManager::init_entities()
 {
 	std::cout << "init entities\n";
+	static float velocity_range = 1.f;
 	for (int i = 0; i < ParticleSettings::particle_count; ++i)
 	{
 		Entity* entity = entities_.emplace(true);
 		entity->position_ = Random::rand_pos_in_rect(*bounds_);
-		entity->velocity_ = Random::rand_vector(-1.f, 1.f);
+		entity->velocity_ = Random::rand_vector(-velocity_range, velocity_range);
+		entity->color_ = get_rand_white_color();
 	}
 }
 
@@ -27,12 +31,14 @@ void ParticleManager::update_particles()
 	frame_rate_smoothing_.update_frame_rate();
 	stats.updating_fps = frame_rate_smoothing_.get_average_frame_rate();
 	stats.iterations_++;
-	add_particles_to_grid();
-	resolve_collisions();
+
+	// Collisions
+	add_particles_to_grid();        // Particles get added to the spatial grid
+	run_collision_detection();      // Overlapping particles are added to a container
+	handle_collision_resolutions(); // Overlapping particles are resolved
 	
 	for (Entity* entity : entities_)
 	{
-		entity->update();
 		sf::Vector2f& position_ = entity->position_;
 		sf::Vector2f& velocity_ = entity->velocity_;
 
@@ -69,8 +75,6 @@ void ParticleManager::add_particles_to_grid()
 	render.radii.resize(n);
 	render.colors.resize(n);
 	entity_velocities_.resize(n);
-	collision_resolutions.resize(n);
-	velocity_resolutions.resize(n);
 
 	stats.cell_particle_count = n;
 
@@ -80,33 +84,53 @@ void ParticleManager::add_particles_to_grid()
 	for (Entity* entity : entities_)
 	{
 		const sf::Vector2f pos = entity->position_;
-		grid.add_object(pos.x, pos.y, entity->id_);
+		grid.add_object(pos.x, pos.y, i);
 
 		render.positions_x[i] = pos.x;
 		render.positions_y[i] = pos.y;
 		render.radii[i] = particle_radius;
-		render.colors[i] = sf::Color::White;
+
+		render.colors[i] = entity->color_;
+
 		entity_velocities_[i] = entity->velocity_;
-		velocity_resolutions[i] = { 0.f, 0.f };
-		collision_resolutions[i] = { 0.f, 0.f };
+
 		++i;
 	}
 }
 
-
-void ParticleManager::resolve_collisions()
+void ParticleManager::repel_system_from_point(const sf::Vector2f point)
 {
-	calculate_collision_resolutions();
+	static float magnitude = 22.f;
+	static float radius = ParticleSettings::particle_radius * 20.f;
+	static float rad_sq = radius * radius;
 
-	int idx = 0;
 	for (Entity* entity : entities_)
 	{
-		entity->position_ += collision_resolutions[idx];
-		entity->velocity_ += velocity_resolutions[idx];
+		sf::Vector2f pos = entity->position_;
+		sf::Vector2f rel = pos - point;
+		float dist_sq = rel.lengthSquared();
 
-		idx++;
+		if (dist_sq > rad_sq)
+			continue;
+
+		sf::Vector2f dir = rel.normalized();
+
+		entity->velocity_ += dir * magnitude;
 	}
 }
+
+sf::Color ParticleManager::get_rand_white_color()
+{
+	// generates a random white color so that when particles are densily packed you can easily see each one
+	constexpr int min = 160;
+	constexpr int max = 255;
+	constexpr std::uint8_t transparency = 150;
+
+	const int col = Random::rand_range(min, max);
+	const std::uint8_t col_t = static_cast<std::uint8_t>(col);
+	return sf::Color{ col_t, col_t, col_t, transparency };
+}
+
 
 
 void ParticleManager::fill_snapshot(SimSnapshot& snapshot)

@@ -21,11 +21,12 @@
 #include <functional>
 
 inline static constexpr int frame_smoothing_count = 30;
+inline static const std::string title = "Spatial Hash Grid";
 
 class Simulation : SimulationSettings
 {
 	sf::Vector2u size = { static_cast<unsigned int>(screen_width), static_cast<unsigned int>(screen_height) };
-	sf::RenderWindow window{ sf::VideoMode(size), "Collision Detection", sf::Style::Default };
+	sf::RenderWindow window{ sf::VideoMode(size), title, sf::Style::None };
 
 	bool paused = false;
 	bool draw_grid = false;
