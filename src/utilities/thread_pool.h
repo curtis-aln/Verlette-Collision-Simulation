@@ -9,18 +9,17 @@ class BarrierThreadPool
 {
     struct Worker
     {
-        std::counting_semaphore<1> start_sem{ 0 };  // main signals this to kick off
-        std::function<void()>      job;
-        std::thread                thread;
-        std::atomic<bool>          done{ true };
+        std::counting_semaphore<1> start_sem{ 0 };
+        int job_index = 0;          // which job this worker runs
+        std::thread thread;
     };
 
     std::vector<std::unique_ptr<Worker>> workers_;
-    std::atomic<int>                     pending_{ 0 };
-    std::binary_semaphore                all_done_sem_{ 0 };
-    bool                                 stop_ = false;
-
-    int job_count_ = 0;
+    const std::vector<std::function<void()>>* jobs_ = nullptr;  // non-owning ptr
+    std::atomic<int>  pending_{ 0 };
+    std::binary_semaphore all_done_sem_{ 0 };
+    bool stop_ = false;
+    int  job_count_ = 0;
 
 public:
     explicit BarrierThreadPool(int n)
@@ -29,16 +28,16 @@ public:
         for (int i = 0; i < n; ++i)
         {
             auto& w = workers_.emplace_back(std::make_unique<Worker>());
+            w->job_index = i;
             w->thread = std::thread([this, &worker = *w]
                 {
                     while (true)
                     {
-                        worker.start_sem.acquire();      // sleep until signalled
+                        worker.start_sem.acquire();
                         if (stop_) return;
 
-                        worker.job();                    // run assigned job
+                        (*jobs_)[worker.job_index]();  // index directly into stored ptr
 
-                        // last thread to finish wakes the main thread
                         if (pending_.fetch_sub(1, std::memory_order_acq_rel) == 1)
                             all_done_sem_.release();
                     }
@@ -46,24 +45,15 @@ public:
         }
     }
 
-    ~BarrierThreadPool()
+    // Call once at init, not every frame
+    void set_jobs(const std::vector<std::function<void()>>& jobs)
     {
-        stop_ = true;
-        for (auto& w : workers_)
-            w->start_sem.release();
-        for (auto& w : workers_)
-            w->thread.join();
+        assert((int)jobs.size() <= (int)workers_.size());
+        jobs_ = &jobs;
+        job_count_ = (int)jobs.size();
     }
 
-    // Call this once after construction, not run_and_wait every frame
-    void assign_jobs(const std::vector<std::function<void()>>& jobs)
-    {
-        for (int i = 0; i < (int)jobs.size(); ++i)
-            workers_[i]->job = jobs[i];
-        job_count_ = (int)jobs.size(); // store this
-    }
-
-    // Then run_and_wait becomes just the signal/wait, no copies
+    // Just signal and wait — no copies, no allocation
     void run_and_wait()
     {
         pending_.store(job_count_, std::memory_order_release);
@@ -71,6 +61,4 @@ public:
             workers_[i]->start_sem.release();
         all_done_sem_.acquire();
     }
-
-    int worker_count() const { return static_cast<int>(workers_.size()); }
 };

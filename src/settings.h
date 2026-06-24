@@ -31,7 +31,7 @@ struct ParticleSettings
 
     inline static uint32_t CellsX = 100;
     inline static uint32_t CellsY = 100;
-	inline static uint32_t cell_max_capacity = 64;
+	inline static uint32_t cell_max_capacity = 32;
 
     sf::Color colorActive = { 255, 0, 0 };
     sf::Color colorInctive = { 255, 255, 255 };

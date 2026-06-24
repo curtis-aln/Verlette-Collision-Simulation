@@ -13,12 +13,18 @@
 #include "../utilities/thread_pool.h"
 #include <functional>
 
+inline static constexpr int nearby_ids_max = 155;
+
+
 // This is a basic datastructure which allows the adding and removing of collision indexes without memory reallocation
-struct CollisionVector
+struct alignas(64) CollisionVector
 {
 	using CollisionPair = std::pair<int, int>;
 	std::vector<CollisionPair> collision_pairs_{};
 	int size_ = 0; // determines the active indexes in the collision_pair vector
+
+	// a manual padding technique to force the struct to occupy exactly one 64-byte cache line
+	char padding_[64 - sizeof(std::vector<CollisionPair>) - sizeof(int)];
 	
 	CollisionVector(int reserve)
 	{
@@ -27,14 +33,10 @@ struct CollisionVector
 
 	void add(int index_a, int index_b)
 	{
-		int new_idx = size_;
-		CollisionPair& pair = collision_pairs_[new_idx];
-		pair.first = index_a;
-		pair.second = index_b;
-
-		// making sure that the size_ never exceeeds the actual size of the container and raises an error
-		if (size_ < collision_pairs_.size() - 1)
-			++size_;
+		if (size_ >= static_cast<int>(collision_pairs_.size())) return;
+		collision_pairs_[size_].first = index_a;
+		collision_pairs_[size_].second = index_b;
+		++size_;
 	}
 
 	void clear()
@@ -88,12 +90,11 @@ private:
 	void add_particles_to_grid();
 	
 	sf::Color get_rand_white_color();
-	void build_color_groups();
 	void init_collision_jobs();
-	void update_cells_in_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
+	void run_collision_detection();
+	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
 	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void handle_collision_resolutions();
 	void resolve_pair_collision(int particle_a_index, int particle_b_index);
-	void run_collision_detection();
 };

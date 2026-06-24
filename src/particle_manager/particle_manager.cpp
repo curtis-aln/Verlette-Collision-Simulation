@@ -2,21 +2,22 @@
 #include "../utilities/random.h"
 #include <spatial_grid/simple_spatial_grid.h>
 
-thread_local FixedSpan<uint32_t> ParticleManager::tl_nearby_ids{ 155 };
+thread_local FixedSpan<uint32_t> ParticleManager::tl_nearby_ids{ nearby_ids_max };
 
 ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds)
 	: window_(window), bounds_(bounds), entities_(ParticleSettings::particle_count)
 {
 	init_entities();
 	init_collision_jobs();
-
 	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count));
+
+	collision_thread_pool_.set_jobs(collision_jobs_);  // once
 }
 
 void ParticleManager::init_entities()
 {
 	std::cout << "init entities\n";
-	static float velocity_range = 1.f;
+	static float velocity_range = 0.21f;
 	for (int i = 0; i < ParticleSettings::particle_count; ++i)
 	{
 		Entity* entity = entities_.emplace(true);
@@ -42,6 +43,9 @@ void ParticleManager::update_particles()
 		sf::Vector2f& position_ = entity->position_;
 		sf::Vector2f& velocity_ = entity->velocity_;
 
+		position_ += velocity_;
+		velocity_ *= 0.995f;
+
 		const float buffer = particle_radius;
 
 		const bool x_out_of_bounds = position_.x < bounds_->position.x + buffer || position_.x > bounds_->position.x + bounds_->size.x - buffer;
@@ -57,6 +61,7 @@ void ParticleManager::update_particles()
 
 		position_.x = std::max(bounds_->position.x + buffer, std::min(position_.x, bounds_->position.x + bounds_->size.x - buffer));
 		position_.y = std::max(bounds_->position.y + buffer, std::min(position_.y, bounds_->position.y + bounds_->size.y - buffer));
+
 	}
 }
 

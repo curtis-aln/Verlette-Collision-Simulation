@@ -2,55 +2,42 @@
 
 #include <iostream>
 
-void ParticleManager::build_color_groups()
-{
-	for (auto& g : collision_color_groups) g.clear();
-
-	for (int y = 0; y < grid.CellsY; ++y)
-		for (int x = 0; x < grid.CellsX; ++x)
-		{
-			const int color = (x % 3) + 3 * (y % 2);
-			const int cell_id = y * grid.CellsX + x;
-			collision_color_groups[color].push_back(cell_id);
-		}
-}
 
 void ParticleManager::init_collision_jobs()
 {
-	build_color_groups();
 	collision_jobs_.clear();
 
-	int updating_threads = ParticleSettings::initial_thread_count;
+	const int total_cells = grid.CellsX * grid.CellsY;
+	const int chunk = std::max(1u, (total_cells + initial_thread_count - 1) / initial_thread_count);
 
-	int thread_id = 0;
-	for (auto& group : collision_color_groups)
+	for (int t = 0; t < initial_thread_count; ++t)
 	{
-		const int group_size = static_cast<int>(group.size());
-		const int chunk = std::max(1, (group_size + updating_threads - 1) / updating_threads);
+		const int begin = t * chunk;
+		if (begin >= total_cells) break;
+		const int end = std::min(begin + chunk, total_cells);
 
-		colour_job_boundaries_.push_back(static_cast<int>(collision_jobs_.size()));
-
-		for (int t = 0; t < updating_threads; ++t)
-		{
-			const int begin = t * chunk;
-			if (begin >= group_size) break;
-			const int end = std::min(begin + chunk, group_size);
-
-			collision_jobs_.emplace_back([this, &group, begin, end, t]  // capture t as thread id
-				{
-					thread_local FixedSpan<uint32_t> local_nearby_ids = tl_nearby_ids;
-					for (int i = begin; i < end; ++i)
-						update_cells_in_grid_cell(group[i], local_nearby_ids, collision_indexes[t]);
-				});
-		}
+		collision_jobs_.emplace_back([this, begin, end, t]
+			{
+				thread_local FixedSpan<uint32_t> local_nearby_ids = tl_nearby_ids;
+				for (int i = begin; i < end; ++i)
+					detect_collisions_for_grid_cell(i, local_nearby_ids, collision_indexes[t]);
+			});
 	}
-	colour_job_boundaries_.push_back(static_cast<int>(collision_jobs_.size()));
 }
 
-// collision_resolution.cpp
-void ParticleManager::update_cells_in_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
+void ParticleManager::run_collision_detection()
 {
-	if (grid.cell_capacities[grid_cell_id] == 0)
+	collision_thread_pool_.run_and_wait(); // single pass, no colour loop
+}
+
+
+void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
+{
+	// This function handles all the collision detection for a grid cell, it is far more computationally efficient
+	// to collect all the particles around and in this cell into nearby_id's and then for each particle in this cell, check for collisions
+	// than it is to go over each particle and re-calculate its nearby neighbours
+	
+	if (grid.cell_capacities[grid_cell_id] == 0) // if the cell is empty, skip
 		return;
 
 	nearby_ids.clear();
@@ -59,32 +46,15 @@ void ParticleManager::update_cells_in_grid_cell(const int grid_cell_id, FixedSpa
 	const int cell_index_x = grid_cell_id % grid.CellsX;
 	const int cell_index_y = grid_cell_id / grid.CellsX;
 
-	// Current cell
-	update_nearby_container(cell_index_x, cell_index_y, nearby_ids);
-
-	// Right
-	update_nearby_container(cell_index_x + 1, cell_index_y, nearby_ids);
-
-	// Bottom-left
-	update_nearby_container(cell_index_x - 1, cell_index_y + 1, nearby_ids);
-
-	// Bottom
-	update_nearby_container(cell_index_x, cell_index_y + 1, nearby_ids);
-
-	// Bottom-right
-	update_nearby_container(cell_index_x + 1, cell_index_y + 1, nearby_ids);
-
-	// Left
-	update_nearby_container(cell_index_x - 1, cell_index_y, nearby_ids);
-
-	// Top-left
-	update_nearby_container(cell_index_x - 1, cell_index_y - 1, nearby_ids);
-
-	// Top
-	update_nearby_container(cell_index_x, cell_index_y - 1, nearby_ids);
-
-	// Top-right
-	update_nearby_container(cell_index_x + 1, cell_index_y - 1, nearby_ids);
+	update_nearby_container(cell_index_x, cell_index_y, nearby_ids);         // Current cell
+	update_nearby_container(cell_index_x + 1, cell_index_y, nearby_ids);     // Right
+	update_nearby_container(cell_index_x - 1, cell_index_y + 1, nearby_ids); // Bottom-left
+	update_nearby_container(cell_index_x, cell_index_y + 1, nearby_ids);     // Bottom
+	update_nearby_container(cell_index_x + 1, cell_index_y + 1, nearby_ids); // Bottom-right
+	update_nearby_container(cell_index_x - 1, cell_index_y, nearby_ids);     // Left
+	update_nearby_container(cell_index_x - 1, cell_index_y - 1, nearby_ids); // Top-left
+	update_nearby_container(cell_index_x, cell_index_y - 1, nearby_ids);     // Top
+	update_nearby_container(cell_index_x + 1, cell_index_y - 1, nearby_ids); // Top-right
 
 	const uint8_t cell_size = grid.cell_capacities[grid_cell_id];
 	const obj_idx* cell_contents = &grid.grid[grid_cell_id * grid.cell_max_capacity];
@@ -104,7 +74,6 @@ void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, c
 	const uint32_t neighbour_index = neighbour_index_y * grid.CellsX + neighbour_index_x;
 	const uint8_t size = grid.cell_capacities[neighbour_index];
 
-
 	const auto* contents = &grid.grid[neighbour_index * grid.cell_max_capacity];
 	for (uint8_t idx = 0; idx < size; ++idx)
 		nearby_ids.add(contents[idx]);
@@ -118,9 +87,15 @@ void ParticleManager::update_protozoa_cell(const int protozoa_cell_index, const 
 		render.positions_y[protozoa_cell_index] };
 	const float rad_a = render.radii[protozoa_cell_index];
 
+	// stack-local scratch for this cell's particle's collisions
+	int local_hits[nearby_ids_max];
+	int hit_count = 0;
+
 	// For each particle which is nearby this one
-	for (const uint32_t id : nearby_ids)
+	for (int idx = 0; idx < nearby_ids.count; ++idx)
 	{
+		const int id = nearby_ids.buffer[idx];
+
 		if (protozoa_cell_index == id)
 			continue;
 
@@ -132,13 +107,14 @@ void ParticleManager::update_protozoa_cell(const int protozoa_cell_index, const 
 		const float length_sq = (position_a - position_b).lengthSquared();
 		const float rad_sq = (rad_a + rad_b) * (rad_a + rad_b);
 
-		// if the two particle are not colliding or they are the same particle, continue
-		if (length_sq >= rad_sq || protozoa_cell_index == id || length_sq < 0.01)
-			continue;
 
-		// append this collision to the collision resolutions vector
-		collision_vector.add(protozoa_cell_index, id);
+		const bool colliding = (length_sq < rad_sq && length_sq >= 0.01f);
+		local_hits[hit_count] = id;
+		hit_count += colliding;  // branchless increment
 	}
+
+	for (int i = 0; i < hit_count; ++i)
+		collision_vector.add(protozoa_cell_index, local_hits[i]);
 }
 
 void ParticleManager::handle_collision_resolutions()
@@ -170,13 +146,15 @@ void ParticleManager::resolve_pair_collision(int particle_a_index, int particle_
 
 	// Collision resolution
 	sf::Vector2f direction = particle_a->position_ - particle_b->position_;
-	sf::Vector2f direction_normal = direction.normalized();
+
 	float distance = direction.length();
+	if (distance < 1e-6f) return;
+	sf::Vector2f direction_normal = direction / distance;
 
 	const float local_diam = rad_a + rad_b;
 	const float overlap = distance - local_diam;
 
-	const float correction_factor = 0.1f;
+	const float correction_factor = 0.3f;
 
 	const sf::Vector2f collision_resolution = direction_normal * (overlap * 0.5f * correction_factor);
 	particle_a->position_ -= collision_resolution;
@@ -189,10 +167,10 @@ void ParticleManager::resolve_pair_collision(int particle_a_index, int particle_
 	float mass_a = rad_a; // Todo - dynamic mass
 	float mass_b = rad_b;
 
-	constexpr float restitution = .899f;
+	constexpr float restitution = .99f;
 
 	// Each particle gets a share weighted by the *other* particle's mass fraction
-	const sf::Vector2f rel_vel = vel_a = vel_b;
+	const sf::Vector2f rel_vel = vel_a - vel_b;
 	const float rel_vel_n = rel_vel.x * direction_normal.x + rel_vel.y * direction_normal.y;
 
 	const float overlap_ratio = overlap / local_diam; // 0..1
@@ -206,23 +184,6 @@ void ParticleManager::resolve_pair_collision(int particle_a_index, int particle_
 	const sf::Vector2f resolution_a = impulse * (mass_b * inv_total);
 	const sf::Vector2f resolution_b = impulse * (mass_a * inv_total);
 
-	particle_a->velocity_ += resolution_a * 0.5f;
-	particle_b->velocity_ -= resolution_b * 0.5f;
-}
-
-void ParticleManager::run_collision_detection()
-{
-	//if (!toggles.toggle_collisions) return;
-
-	// Zero the thread buffers once at the start
-	const int entity_count = stats.cell_particle_count;
-
-	for (int c = 0; c < static_cast<int>(colour_job_boundaries_.size()) - 1; ++c)
-	{
-		const int begin = colour_job_boundaries_[c];
-		const int end = colour_job_boundaries_[c + 1];
-		collision_thread_pool_.assign_jobs({ collision_jobs_.begin() + begin,
-											 collision_jobs_.begin() + end });
-		collision_thread_pool_.run_and_wait();
-	}
+	particle_a->velocity_ -= resolution_a;
+	particle_b->velocity_ += resolution_b;
 }
