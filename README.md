@@ -9,4 +9,4 @@ to resolve the collisions accuratly, accounting for physical overlap between the
 ![zoomed in](media/zoomed_in_screenshot.png)
 
 # Youtube Link
-<iframe width="560" height="315" src="https://www.youtube.com/embed/opUkOhR4IGk?si=Jf4bSoeBDfMedL3q" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/opUkOhR4IGk/0.jpg)](https://www.youtube.com/watch?v=opUkOhR4IGk)
