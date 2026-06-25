@@ -46,15 +46,16 @@ void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, Fi
 	const int cell_index_x = grid_cell_id % grid.CellsX;
 	const int cell_index_y = grid_cell_id / grid.CellsX;
 
-	update_nearby_container(cell_index_x, cell_index_y, nearby_ids);         // Current cell
-	update_nearby_container(cell_index_x + 1, cell_index_y, nearby_ids);     // Right
-	update_nearby_container(cell_index_x - 1, cell_index_y + 1, nearby_ids); // Bottom-left
-	update_nearby_container(cell_index_x, cell_index_y + 1, nearby_ids);     // Bottom
-	update_nearby_container(cell_index_x + 1, cell_index_y + 1, nearby_ids); // Bottom-right
-	update_nearby_container(cell_index_x - 1, cell_index_y, nearby_ids);     // Left
-	update_nearby_container(cell_index_x - 1, cell_index_y - 1, nearby_ids); // Top-left
-	update_nearby_container(cell_index_x, cell_index_y - 1, nearby_ids);     // Top
-	update_nearby_container(cell_index_x + 1, cell_index_y - 1, nearby_ids); // Top-right
+	// Self
+	update_nearby_container(cell_index_x, cell_index_y, nearby_ids);
+	// Right
+	update_nearby_container(cell_index_x + 1, cell_index_y, nearby_ids);
+	// Bottom-left
+	update_nearby_container(cell_index_x - 1, cell_index_y + 1, nearby_ids);
+	// Bottom
+	update_nearby_container(cell_index_x, cell_index_y + 1, nearby_ids);
+	// Bottom-right
+	update_nearby_container(cell_index_x + 1, cell_index_y + 1, nearby_ids);
 
 	const uint8_t cell_size = grid.cell_capacities[grid_cell_id];
 	const obj_idx* cell_contents = &grid.grid[grid_cell_id * grid.cell_max_capacity];
@@ -66,7 +67,7 @@ void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, Fi
 
 void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids)
 {
-	// Out of bounds check, no wrapping needed
+	// Out of bounds check
 	if (neighbour_index_x < 0 || neighbour_index_x >= static_cast<int>(grid.CellsX) ||
 		neighbour_index_y < 0 || neighbour_index_y >= static_cast<int>(grid.CellsY))
 		return;
@@ -79,38 +80,33 @@ void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, c
 		nearby_ids.add(contents[idx]);
 }
 
-void ParticleManager::update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
+void ParticleManager::update_protozoa_cell(
+	const int protozoa_cell_index,
+	const FixedSpan<uint32_t>& nearby_ids,
+	CollisionVector& collision_vector)
 {
-	// Fetching information on the Focus particle
-	sf::Vector2f position_a = {
-		render.positions_x[protozoa_cell_index],
-		render.positions_y[protozoa_cell_index] };
+	const float ax = render.positions_x[protozoa_cell_index];
+	const float ay = render.positions_y[protozoa_cell_index];
 	const float rad_a = render.radii[protozoa_cell_index];
+	const float rad_sq = (rad_a + rad_a) * (rad_a + rad_a);
 
-	// stack-local scratch for this cell's particle's collisions
-	int local_hits[nearby_ids_max];
+	int local_hits[155];
 	int hit_count = 0;
 
-	// For each particle which is nearby this one
 	for (int idx = 0; idx < nearby_ids.count; ++idx)
 	{
 		const int id = nearby_ids.buffer[idx];
 
-		if (protozoa_cell_index == id)
-			continue;
+		// Only process forward pairs — eliminates all (b,a) duplicates
+		if (id <= protozoa_cell_index) continue;
 
-		// Calculate the distance between the two particles
-		const sf::Vector2f position_b = sf::Vector2f{ 
-			render.positions_x[id], render.positions_y[id] };
-		const float rad_b = render.radii[id];
-
-		const float length_sq = (position_a - position_b).lengthSquared();
-		const float rad_sq = (rad_a + rad_b) * (rad_a + rad_b);
-
+		const float dx = ax - render.positions_x[id];
+		const float dy = ay - render.positions_y[id];
+		const float length_sq = dx * dx + dy * dy;
 
 		const bool colliding = (length_sq < rad_sq && length_sq >= 0.01f);
 		local_hits[hit_count] = id;
-		hit_count += colliding;  // branchless increment
+		hit_count += colliding;
 	}
 
 	for (int i = 0; i < hit_count; ++i)
@@ -121,20 +117,26 @@ void ParticleManager::handle_collision_resolutions()
 {
 	for (CollisionVector& collision_vector : collision_indexes)
 	{
+		float usage_percentage = collision_vector.size_ / static_cast<float>(collision_vector.collision_pairs_.size());
+
+		Entity* particle_a = entities_.at(collision_vector.collision_pairs_[0].first);
 		for (int i = 0; i < collision_vector.size_; i++)
 		{
 			CollisionVector::CollisionPair& pair = collision_vector.collision_pairs_[i];
-			resolve_pair_collision(pair.first, pair.second);
+
+			// the way the collision list is built, particle_a repeats many time with many different particle b's
+			// so we can avoid constantly fetching particle_a from the entities_ vector by caching it
+			if (particle_a->id_ != pair.first)
+				particle_a = entities_.at(pair.first);
+
+			resolve_pair_collision(particle_a, entities_.at(pair.second));
 		}
 		collision_vector.clear();
 	}
 }
 
-void ParticleManager::resolve_pair_collision(int particle_a_index, int particle_b_index)
+void ParticleManager::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
 {
-	// Retriving the relevant particle data
-	Entity* particle_a = entities_.at(particle_a_index);
-	Entity* particle_b = entities_.at(particle_b_index);
 
 	float rad_a = particle_radius; // Todo - dynamic radii
 	float rad_b = particle_radius;
@@ -149,7 +151,7 @@ void ParticleManager::resolve_pair_collision(int particle_a_index, int particle_
 	const float local_diam = rad_a + rad_b;
 	const float overlap = distance - local_diam;
 
-	const float correction_factor = 0.3f;
+	const float correction_factor = 0.2f;
 
 	const sf::Vector2f collision_resolution = direction_normal * (overlap * 0.5f * correction_factor);
 	particle_a->position_ -= collision_resolution;
@@ -162,14 +164,17 @@ void ParticleManager::resolve_pair_collision(int particle_a_index, int particle_
 	float mass_a = rad_a; // Todo - dynamic mass
 	float mass_b = rad_b;
 
-	constexpr float restitution = .99f;
+	constexpr float restitution = .69f;
 
 	// Each particle gets a share weighted by the *other* particle's mass fraction
 	const sf::Vector2f rel_vel = vel_a - vel_b;
 	const float rel_vel_n = rel_vel.x * direction_normal.x + rel_vel.y * direction_normal.y;
 
-	const float overlap_ratio = overlap / local_diam; // 0..1
-	const float impulse_scalar = -(1.0f + restitution) * rel_vel_n * overlap_ratio;
+	if (rel_vel_n > 0.f) 
+		return;  // positive = separating along A←B axis, skip
+
+	const float impulse_scalar = (1.0f + restitution) * rel_vel_n;
+	// rel_vel_n < 0 (approaching), so impulse_scalar < 0 — correct for the -= / += below
 
 	const sf::Vector2f impulse = direction_normal * impulse_scalar;
 

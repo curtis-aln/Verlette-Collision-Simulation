@@ -63,8 +63,6 @@ class ParticleManager : ParticleSettings
 	static thread_local FixedSpan<uint32_t> tl_nearby_ids;
 
 	alignas(64) std::vector<sf::Vector2f> entity_velocities_;
-	std::array<std::vector<int>, 6> collision_color_groups;
-	std::vector<int> colour_job_boundaries_;
 	std::vector<std::function<void()>> collision_jobs_;
 	
 	std::vector<CollisionVector> collision_indexes{};
@@ -97,5 +95,5 @@ private:
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
 	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void handle_collision_resolutions();
-	void resolve_pair_collision(int particle_a_index, int particle_b_index);
+	void resolve_pair_collision(Entity* particle_a, Entity* particle_b);
 };

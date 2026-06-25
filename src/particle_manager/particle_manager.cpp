@@ -9,7 +9,7 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 {
 	init_entities();
 	init_collision_jobs();
-	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count));
+	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count / (initial_thread_count * 6)));
 
 	collision_thread_pool_.set_jobs(collision_jobs_);  // once
 }
@@ -17,7 +17,7 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 void ParticleManager::init_entities()
 {
 	std::cout << "init entities\n";
-	static float velocity_range = 0.21f;
+	static float velocity_range = 10.21f;
 	for (int i = 0; i < ParticleSettings::particle_count; ++i)
 	{
 		Entity* entity = entities_.emplace(true);
@@ -45,7 +45,7 @@ void ParticleManager::update_particles()
 		sf::Vector2f& velocity_ = entity->velocity_;
 
 		position_ += velocity_;
-		velocity_ *= 0.99995f;
+		velocity_ *= 0.999995f;
 
 		const float buffer = particle_radius;
 
@@ -97,7 +97,7 @@ void ParticleManager::add_particles_to_grid()
 
 		// only add this particle to the grid if it matches this frame's parity
 		//if ((i & 1) == frame_parity)
-			grid.add_object(pos.x, pos.y, i);
+		grid.add_object(pos.x, pos.y, i);
 
 		++i;
 	}
@@ -105,7 +105,7 @@ void ParticleManager::add_particles_to_grid()
 
 void ParticleManager::repel_system_from_point(const sf::Vector2f point)
 {
-	static float magnitude = 42.f;
+	static float magnitude = 142.f;
 	static float radius = ParticleSettings::particle_radius * 20.f;
 	static float rad_sq = radius * radius;
 
