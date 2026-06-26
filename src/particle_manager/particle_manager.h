@@ -14,32 +14,12 @@
 #include <functional>
 #include <set>
 
+#include "collision_vector.h"
+
 inline static const int nearby_ids_max = ParticleSettings::cell_max_capacity * 9;
 
 
-// This is a basic datastructure which allows the adding and removing of collision indexes without memory reallocation
-struct alignas(64) CollisionVector
-{
-	using CollisionPair = std::pair<int, int>;
-	std::vector<uint64_t> collision_pairs_{};
-	int size_ = 0; // determines the active indexes in the collision_pair vector
-	
-	CollisionVector(int reserve)
-	{
-		collision_pairs_.resize(reserve);
-	}
 
-	void add(int index_a, int index_b)
-	{
-		assert(size_ < static_cast<int>(collision_pairs_.size()));
-		collision_pairs_[size_++] = (static_cast<uint64_t>(index_a) << 32) | static_cast<uint32_t>(index_b);
-	}
-
-	void clear()
-	{
-		size_ = 0;
-	}
-};
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
 class ParticleManager : ParticleSettings
@@ -89,7 +69,7 @@ private:
 	void run_collision_detection();
 	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
-	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
+	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector, int check_count);
 	void handle_collision_resolutions();
 	void resolve_collision_vector_collisions(CollisionVector& collision_vector);
 	void resolve_pair_collision(Entity* particle_a, Entity* particle_b);

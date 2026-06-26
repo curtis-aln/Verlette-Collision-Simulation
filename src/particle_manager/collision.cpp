@@ -36,33 +36,66 @@ void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, Fi
 	// This function handles all the collision detection for a grid cell, it is far more computationally efficient
 	// to collect all the particles around and in this cell into nearby_id's and then for each particle in this cell, check for collisions
 	// than it is to go over each particle and re-calculate its nearby neighbours
-	
-	if (grid.cell_capacities[grid_cell_id] == 0) // if the cell is empty, skip
-		return;
 
-	nearby_ids.clear();
-	int neighbours_size = 0;
+		if (grid.cell_capacities[grid_cell_id] == 0)
+			return;
 
-	const int cell_index_x = grid_cell_id % grid.CellsX;
-	const int cell_index_y = grid_cell_id / grid.CellsX;
+		nearby_ids.clear();
 
-	// Self
-	update_nearby_container(cell_index_x, cell_index_y, nearby_ids);
-	// Right
-	update_nearby_container(cell_index_x + 1, cell_index_y, nearby_ids);
-	// Bottom-left
-	update_nearby_container(cell_index_x - 1, cell_index_y + 1, nearby_ids);
-	// Bottom
-	update_nearby_container(cell_index_x, cell_index_y + 1, nearby_ids);
-	// Bottom-right
-	update_nearby_container(cell_index_x + 1, cell_index_y + 1, nearby_ids);
+		const int cell_index_x = grid_cell_id % grid.CellsX;
+		const int cell_index_y = grid_cell_id / grid.CellsX;
 
-	const uint8_t cell_size = grid.cell_capacities[grid_cell_id];
-	const obj_idx* cell_contents = &grid.grid[grid_cell_id * grid.cell_max_capacity];
+		const uint8_t self_size = grid.cell_capacities[grid_cell_id];
+		const auto* self_contents = &grid.grid[grid_cell_id * grid.cell_max_capacity];
 
-	for (uint8_t idx = 0; idx < cell_size; ++idx)
-		update_protozoa_cell(cell_contents[idx], nearby_ids, collision_vector);
-}
+		const float cell_w = grid.cell_width;
+		const float cell_h = grid.cell_height;
+		const float cell_min_x = cell_index_x * cell_w;
+		const float cell_min_y = cell_index_y * cell_h;
+		const float cell_max_x = cell_min_x + cell_w;
+		const float cell_max_y = cell_min_y + cell_h;
+
+		for (uint8_t idx = 0; idx < self_size; ++idx)
+			nearby_ids.add(self_contents[idx]);
+
+		const int self_only_count = nearby_ids.count;
+
+		bool border_flags[cell_max_capacity] = {};
+		uint8_t border_count = 0;
+
+		for (uint8_t idx = 0; idx < self_size; ++idx)
+		{
+			const int pid = self_contents[idx];
+			const sf::Vector2f pos = render.positions[pid];
+			const float ax = pos.x;
+			const float ay = pos.y;
+			const float r = render.radii[pid];
+
+			if (!(ax - r >= cell_min_x && ax + r <= cell_max_x &&
+				ay - r >= cell_min_y && ay + r <= cell_max_y))
+			{
+				border_flags[idx] = true;
+				++border_count;
+			}
+		}
+
+		if (border_count > 0)
+		{
+			update_nearby_container(cell_index_x + 1, cell_index_y, nearby_ids);
+			update_nearby_container(cell_index_x - 1, cell_index_y + 1, nearby_ids);
+			update_nearby_container(cell_index_x, cell_index_y + 1, nearby_ids);
+			update_nearby_container(cell_index_x + 1, cell_index_y + 1, nearby_ids);
+		}
+
+		for (uint8_t idx = 0; idx < self_size; ++idx)
+		{
+			const int pid = self_contents[idx];
+			if (border_flags[idx])
+				update_protozoa_cell(pid, nearby_ids, collision_vector, -1);
+			else
+				update_protozoa_cell(pid, nearby_ids, collision_vector, self_only_count);
+		}
+	}
 
 
 void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids)
@@ -83,24 +116,29 @@ void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, c
 
 void ParticleManager::update_protozoa_cell(
 	const int protozoa_cell_index,
-	const FixedSpan<uint32_t>& nearby_ids,
-	CollisionVector& collision_vector)
+	const FixedSpan<uint32_t>&nearby_ids,
+	CollisionVector & collision_vector,
+	int check_count = -1)  // -1 means check all
 {
-	const float ax = render.positions_x[protozoa_cell_index];
-	const float ay = render.positions_y[protozoa_cell_index];
+	const int limit = (check_count < 0) ? nearby_ids.count : check_count;
+
+	const sf::Vector2f pos = render.positions[protozoa_cell_index];
+	const float ax = pos.x;
+	const float ay = pos.y;
 	const float rad_a = render.radii[protozoa_cell_index];
 	const float rad_sq = (rad_a + rad_a) * (rad_a + rad_a);
 
 
-	for (int idx = 0; idx < nearby_ids.count; ++idx)
+	for (int idx = 0; idx < limit; ++idx)
 	{
 		const int id = nearby_ids.buffer[idx];
 
 		// Only process forward pairs — eliminates all (b,a) duplicates
 		if (id <= protozoa_cell_index) continue;
 
-		const float dx = ax - render.positions_x[id];
-		const float dy = ay - render.positions_y[id];
+		const sf::Vector2f other_pos = render.positions[id];
+		const float dx = ax - other_pos.x;
+		const float dy = ay - other_pos.y;
 		const float length_sq = dx * dx + dy * dy;
 
 		const bool colliding = (length_sq < rad_sq && length_sq >= 0.01f);
@@ -122,26 +160,22 @@ void ParticleManager::handle_collision_resolutions()
 
 void ParticleManager::resolve_collision_vector_collisions(CollisionVector& collision_vector)
 {
-	const int size = collision_vector.size_;
+	const int size = collision_vector.size();
 	if (size == 0)
 		return;
 
 	Entity* particle_a = nullptr;
 	int cached_id = -1;
 
-	for (int i = 0; i < size; ++i)
+	for (CollisionPair pair : collision_vector)
 	{
-		const uint64_t packed = collision_vector.collision_pairs_[i];
-		const int id_a = static_cast<int>(packed >> 32);
-		const int id_b = static_cast<int>(packed & 0xFFFFFFFF);
-
-		if (id_a != cached_id)
+		if (pair.index_a != cached_id)
 		{
-			particle_a = entities_.at(id_a);
-			cached_id = id_a;
+			particle_a = entities_.at(pair.index_a);
+			cached_id = pair.index_a;
 		}
 
-		resolve_pair_collision(particle_a, entities_.at(id_b));
+		resolve_pair_collision(particle_a, entities_.at(pair.index_b));
 	}
 
 	collision_vector.clear();

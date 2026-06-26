@@ -85,7 +85,7 @@ add_executable(SpatialHashGrid
     "src/particle_manager/particle_manager.h" 
     "src/utilities/font.h" 
     "src/simulation/imgui/imgui_handling.cpp" 
-    "src/simulation/imgui/tabs/i_tab.h" "src/utilities/stopwatch.h" "src/particle_manager/collision.cpp")
+    "src/simulation/imgui/tabs/i_tab.h" "src/utilities/stopwatch.h" "src/particle_manager/collision.cpp" "src/particle_manager/collision_vector.h")
 
 
 # ── Include directories ───────────────────────────────────────────────────────

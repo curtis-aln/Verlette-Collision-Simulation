@@ -82,7 +82,7 @@ void Simulation::render()
     float dt = static_cast<float>(m_delta_time_.get_delta());
     //m_total_time_elapsed_ += dt;
 
-    if (snap.stats.iterations_ <= 1)
+    if (particleManager.stats.iterations_ <= 1)
         return;
 
     handle_events();       

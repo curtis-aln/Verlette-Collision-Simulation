@@ -77,8 +77,7 @@ void ParticleManager::add_particles_to_grid()
 	const int n = entities_.size();
 	const int frame_parity = resolution_frame_ & 1;
 
-	render.positions_x.resize(n);
-	render.positions_y.resize(n);
+	render.positions.resize(n);
 	render.radii.resize(n);
 	render.colors.resize(n);
 
@@ -90,8 +89,7 @@ void ParticleManager::add_particles_to_grid()
 	{
 		const sf::Vector2f pos = entity->position_;
 
-		render.positions_x[i] = pos.x;
-		render.positions_y[i] = pos.y;
+		render.positions[i] = pos;
 		render.radii[i] = particle_radius;
 		render.colors[i] = entity->color_;
 
@@ -147,13 +145,11 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 	snapshot.toggles = toggles;
 	snapshot.stats = stats;
 
-	snapshot.render.positions_x.resize(n);
-	snapshot.render.positions_y.resize(n);
+	snapshot.render.positions.resize(n);
 	snapshot.render.colors.resize(n);
 	snapshot.render.radii.resize(n);
 
-	std::memcpy(snapshot.render.positions_x.data(), render.positions_x.data(), n * sizeof(float));
-	std::memcpy(snapshot.render.positions_y.data(), render.positions_y.data(), n * sizeof(float));
+	std::memcpy(snapshot.render.positions.data(), render.positions.data(), n * sizeof(sf::Vector2f));
 	std::memcpy(snapshot.render.colors.data(), render.colors.data(), n * sizeof(sf::Color));
 	std::memcpy(snapshot.render.radii.data(), render.radii.data(), n * sizeof(float));
 }

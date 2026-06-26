@@ -16,7 +16,7 @@ struct SimSnapshot
     SimSnapshot(int cell_render_reserve)
     {
 	    render.colors.reserve(cell_render_reserve);
-	    render.positions_x.reserve(cell_render_reserve);
-	    render.positions_y.reserve(cell_render_reserve);
+	    render.positions.reserve(cell_render_reserve);
+	    render.radii.reserve(cell_render_reserve);
     }
 };

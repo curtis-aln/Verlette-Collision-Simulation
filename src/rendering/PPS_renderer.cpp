@@ -103,9 +103,12 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
 void PPS_Renderer::render_heat_map(const SimSnapshot& snapshot,
     const Camera& camera, const float alpha)
 {
+    // turning a vector of sf::Vector2fs into two x and y vectors
+	auto* vec2f_vector = &snapshot.render.positions;
+
 
     heatmap.clear();
-    heatmap.scatter(snapshot.render.positions_x.data(), snapshot.render.positions_y.data(), ParticleSettings::particle_count, camera.m_view_);
+    heatmap.scatter2f(snapshot.render.positions, camera.m_view_);
     heatmap.upload();
     heatmap.draw(*window_, static_cast<uint8_t>(alpha));
 }
@@ -126,7 +129,9 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
 
     for (size_t i = 0; i < ParticleSettings::particle_count; ++i)
     {
-        const float px_v = snapshot.render.positions_x[i], py_v = snapshot.render.positions_y[i];
+
+        const sf::Vector2f pos = snapshot.render.positions[i];
+        const float px_v = pos.x, py_v = pos.y;
         const float r = ParticleSettings::particle_radius;
 
         if (px_v < top_left.x || py_v < top_left.y ||

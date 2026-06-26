@@ -85,6 +85,41 @@ void DensityHeatmap::scatter(const float* px, const float* py, int n, const sf::
     }
 }
 
+void DensityHeatmap::scatter2f(const std::vector<sf::Vector2f>& positions, const sf::View& view)
+{
+    const sf::Vector2f view_center = view.getCenter();
+    const sf::Vector2f view_size = view.getSize();
+    const float inv_vw = 1.f / view_size.x;
+    const float inv_vh = 1.f / view_size.y;
+
+    const int W = static_cast<int>(m_tex_w);
+    const int H = static_cast<int>(m_tex_h);
+
+    for (const sf::Vector2f& p : positions)
+    {
+        const float fx = ((p.x - view_center.x) * inv_vw + 0.5f) * W - 0.5f;
+        const float fy = ((p.y - view_center.y) * inv_vh + 0.5f) * H - 0.5f;
+
+        const int x0 = static_cast<int>(std::floor(fx));
+        const int y0 = static_cast<int>(std::floor(fy));
+        const int x1 = x0 + 1;
+        const int y1 = y0 + 1;
+
+        const float sx = fx - x0;
+        const float sy = fy - y0;
+
+        auto splat = [&](int x, int y, float w) {
+            if (x >= 0 && x < W && y >= 0 && y < H)
+                m_counts[y * W + x] += w;
+            };
+
+        splat(x0, y0, (1.f - sx) * (1.f - sy));
+        splat(x1, y0, sx * (1.f - sy));
+        splat(x0, y1, (1.f - sx) * sy);
+        splat(x1, y1, sx * sy);
+    }
+}
+
 void DensityHeatmap::upload(uint32_t fixed_peak)
 {
     float raw_peak = fixed_peak > 0u

@@ -30,9 +30,9 @@ struct ParticleSettings
 
     inline static const float particle_radius = 35.0f;
 
-    inline static uint32_t CellsX = 1'200;
+    inline static uint32_t CellsX = 800;
     inline static uint32_t CellsY = CellsX / SimulationSettings::aspect_ratio;
-	inline static const uint32_t cell_max_capacity = 4;
+	inline static const uint32_t cell_max_capacity = 6;
 
     sf::Color colorActive = { 255, 0, 0 };
     sf::Color colorInctive = { 255, 155, 255 };

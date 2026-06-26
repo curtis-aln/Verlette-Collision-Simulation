@@ -29,6 +29,8 @@ public:
 
     void scatter(const float* px, const float* py, int n, const sf::View& view);
 
+    void scatter2f(const std::vector<sf::Vector2f>& positions, const sf::View& view);
+
     void upload(uint32_t fixed_peak = 0u);
 
     // alpha: 0 = invisible, 255 = fully opaque

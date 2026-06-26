@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics.hpp>
 #include <vector>
 
 #include "../settings.h"
@@ -72,15 +73,13 @@ struct WorldStatistics
 // ─────────────────────────────────────────────────────────────────────────────
 struct RenderData
 {
-    alignas(64) std::vector<float> positions_x;
-    alignas(64) std::vector<float> positions_y;
+    alignas(64) std::vector<sf::Vector2f> positions;
     alignas(64) std::vector<sf::Color>    colors;
     alignas(64) std::vector<float>        radii;
 
     void reserve(const int max_cells)
     {
-        positions_x.resize(max_cells);
-        positions_y.resize(max_cells);
+        positions.resize(max_cells);
         colors.resize(max_cells);
         radii.resize(max_cells);
     }
