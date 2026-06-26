@@ -144,10 +144,8 @@ void ParticleManager::render_grid(sf::Vector2f query_pos)
 }
 
 
-void ParticleManager::repel_system_from_point(const sf::Vector2f point)
+void ParticleManager::repel_system_from_point(const sf::Vector2f point, const float magnitude, const float radius)
 {
-	static float magnitude = 142.f;
-	static float radius = ParticleSettings::particle_radius_min * 20.f;
 	static float rad_sq = radius * radius;
 
 	for (Entity* entity : entities_)
@@ -165,12 +163,9 @@ void ParticleManager::repel_system_from_point(const sf::Vector2f point)
 	}
 }
 
-void ParticleManager::add_particles_at_point(const sf::Vector2f point)
+void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int amount, const float radius)
 {
-	const int count = 100;
-	const float rad = ParticleSettings::particle_radius_min * 20.f;
-
-	for (int i = 0; i < count; ++i)
+	for (int i = 0; i < amount; ++i)
 	{
 		Entity* entity = entities_.add();
 		if (entity == nullptr)
@@ -179,7 +174,7 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point)
 		if (entity == nullptr)
 			break;
 
-		create_random_entity(entity, point + Random::rand_vector(-rad, rad));
+		create_random_entity(entity, point + Random::rand_vector(-radius, radius));
 	}
 }
 
@@ -188,7 +183,7 @@ void ParticleManager::create_random_entity(Entity* entity, sf::Vector2f position
 	entity->position_ = position;
 	entity->velocity_ = Random::rand_vector(-10.f, 10.f);
 	entity->color_rest_ = { 30, 60, 200 };
-	entity->color_max_ = { 255, 140, 0 };
+	entity->color_max_ = { 255, 100, 0 };
 	const float hue_shift = Random::rand_range(0.f, 40.f);
 	entity->color_rest_ = shift_hue({ 30, 60, 200 }, hue_shift);
 	entity->color_max_ = shift_hue({ 255, 140, 0 }, hue_shift);

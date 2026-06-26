@@ -180,9 +180,13 @@ void Simulation::dispatch_event(const sf::Event& event, const sf::Vector2f& cam_
     if (event.is<sf::Event::Closed>())
         running = false;
 
-    else if (const auto* key = event.getIf<sf::Event::KeyPressed>())
+    bool shifting = false;
+    if (const auto* key = event.getIf<sf::Event::KeyPressed>())
     {
         handle_keyboard_events(key->code);
+
+		if (key->code == sf::Keyboard::Key::LShift || key->code == sf::Keyboard::Key::RShift)
+			shifting = true;
     }
     else if (const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>())
     {
@@ -197,9 +201,21 @@ void Simulation::dispatch_event(const sf::Event& event, const sf::Vector2f& cam_
     else if (event.is<sf::Event::MouseButtonReleased>())
         handle_mouse_release();
 
-    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Middle))
+    if (shifting)
     {
-        particleManager.add_particles_at_point(cam_pos);
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Middle))
+        {
+			const float radius = 900;
+            const float amount = 125;
+            particleManager.add_particles_at_point(cam_pos, amount, radius);
+        }
+
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right))
+        {
+			const float magnitude = 13.f;
+			const float radius = 800.f;
+            particleManager.repel_system_from_point(cam_pos, magnitude, radius);
+        }
     }
 }
 
@@ -216,13 +232,7 @@ void Simulation::handle_mouse_press(const sf::Vector2f& cam_pos)
 	if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
 	{
         camera.begin_pan(); 
-	}
-    else if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Right))
-    {
-        // push entities
-        particleManager.repel_system_from_point(camera.get_world_mouse_pos());
-    }
-    
+	} 
 }
 
 void Simulation::handle_mouse_release()

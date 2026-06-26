@@ -47,9 +47,9 @@ public:
 	void render_grid(sf::Vector2f query_pos);
 	void fill_snapshot(SimSnapshot& snapshot);
 
-	void repel_system_from_point(const sf::Vector2f point);
+	void repel_system_from_point(const sf::Vector2f point, const float magnitude, const float radius);
 
-	void add_particles_at_point(const sf::Vector2f point);
+	void add_particles_at_point(const sf::Vector2f point, const int amount, const float radius);
 
 	void create_random_entity(Entity* entity, sf::Vector2f position);
 
