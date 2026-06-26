@@ -70,22 +70,32 @@ add_executable(SpatialHashGrid
     src/main.cpp
     src/rendering/heatmap.cpp 
     src/rendering/PPS_renderer.cpp 
-    src/spatial_grid/spatial_grid_renderer.cpp 
-    src/particle_manager/particle_manager.cpp 
+    src/spatial_grid/spatial_grid_renderer.cpp
+
+    src/particle_system/particle_system.cpp 
+
     
+    src/simulation/simulation.cpp
     src/simulation/imgui/control_panel.cpp
     src/simulation/imgui/tabs/simulation_tab.cpp
+    src/simulation/imgui/imgui_handling.cpp
+
+    src/collision_resolver/collision.cpp 
+    src/collision_resolver/collision_resolver.cpp 
 
     "src/utilities/camera.h" 
     "src/simulation/simulation.h" 
-    "src/simulation/simulation.cpp" 
+    
     "src/settings.h" 
     "src/utilities/random.h" 
     "src/utilities/smooth_frame_rates.h" 
-    "src/particle_manager/particle_manager.h" 
+    "src/particle_system/particle_system.h" 
     "src/utilities/font.h" 
-    "src/simulation/imgui/imgui_handling.cpp" 
-    "src/simulation/imgui/tabs/i_tab.h" "src/utilities/stopwatch.h" "src/particle_manager/collision.cpp" "src/particle_manager/collision_vector.h")
+    
+    "src/simulation/imgui/tabs/i_tab.h" 
+    "src/utilities/stopwatch.h" 
+    
+    "src/collision_resolver/collision_vector.h")
 
 
 # ── Include directories ───────────────────────────────────────────────────────

@@ -1,17 +1,12 @@
-#include "particle_manager.h"
+#include "particle_system.h"
 #include "../utilities/random.h"
 #include <spatial_grid/simple_spatial_grid.h>
 
-thread_local FixedSpan<uint32_t> ParticleManager::tl_nearby_ids{ nearby_ids_max };
 
 ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds)
 	: window_(window), bounds_(bounds), entities_(ParticleSettings::particle_count)
 {
 	init_entities();
-	init_collision_jobs();
-	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count / (initial_thread_count * 2)));
-
-	collision_thread_pool_.set_jobs(collision_jobs_);  // once
 }
 
 void ParticleManager::init_entities()
@@ -34,11 +29,10 @@ void ParticleManager::update_particles()
 	stats.iterations_++;
 
 	// Collisions
-	add_particles_to_grid();        // Particles get added to the spatial grid
-	run_collision_detection();      // Overlapping particles are added to a container
-	handle_collision_resolutions(); // Overlapping particles are resolved
-	++resolution_frame_;
-	
+	collision_resolver_.add_particles_to_grid();        // Particles get added to the spatial grid
+	collision_resolver_.run_collision_detection();      // Overlapping particles are added to a container
+	collision_resolver_.handle_collision_resolutions(); // Overlapping particles are resolved
+
 	for (Entity* entity : entities_)
 	{
 		sf::Vector2f& position_ = entity->position_;
@@ -72,34 +66,6 @@ void ParticleManager::render_grid(sf::Vector2f query_pos)
 	grid_renderer_.render(*window_, query_pos, 200);
 }
 
-void ParticleManager::add_particles_to_grid()
-{
-	const int n = entities_.size();
-	const int frame_parity = resolution_frame_ & 1;
-
-	render.positions.resize(n);
-	render.radii.resize(n);
-	render.colors.resize(n);
-
-	stats.cell_particle_count = n;
-	grid.clear();
-
-	int i = 0;
-	for (Entity* entity : entities_)
-	{
-		const sf::Vector2f pos = entity->position_;
-
-		render.positions[i] = pos;
-		render.radii[i] = particle_radius;
-		render.colors[i] = entity->color_;
-
-		// only add this particle to the grid if it matches this frame's parity
-		//if ((i & 1) == frame_parity)
-		grid.add_object(pos.x, pos.y, i);
-
-		++i;
-	}
-}
 
 void ParticleManager::repel_system_from_point(const sf::Vector2f point)
 {
@@ -148,6 +114,19 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 	snapshot.render.positions.resize(n);
 	snapshot.render.colors.resize(n);
 	snapshot.render.radii.resize(n);
+	render.positions.resize(n);
+	render.colors.resize(n);
+	render.radii.resize(n);
+
+	for (int i = 0; i < n; ++i)
+	{
+		Entity* entity = entities_.at(i);
+		render.positions[i] = entity->position_;
+		render.colors[i] = entity->color_;
+		render.radii[i] = particle_radius;
+	}
+
+	
 
 	std::memcpy(snapshot.render.positions.data(), render.positions.data(), n * sizeof(sf::Vector2f));
 	std::memcpy(snapshot.render.colors.data(), render.colors.data(), n * sizeof(sf::Color));

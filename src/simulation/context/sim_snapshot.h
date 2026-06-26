@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../particle_manager/state.h"
+#include "../../particle_system/state.h"
 
 
 struct SimSnapshot

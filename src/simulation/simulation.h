@@ -3,7 +3,7 @@
 #include <imgui-SFML.h>
 
 #include "../settings.h"
-#include "../entity.hpp"
+#include "../particle_system/particle.h"
 #include "../spatial_grid/simple_spatial_grid.h"
 
 #include "../utilities/random.h"
@@ -11,7 +11,7 @@
 #include "../utilities/smooth_frame_rates.h"
 #include "../utilities/stopwatch.h"
 
-#include "particle_manager/particle_manager.h"
+#include "../particle_system/particle_system.h"
 
 #include "context/sim_command.h"
 #include "context/sim_snapshot.h"

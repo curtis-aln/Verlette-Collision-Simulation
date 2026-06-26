@@ -1,14 +1,11 @@
-#pragma once
-
 #include "../utilities/o_vector.hpp"
-#include "../entity.hpp"
+#include "../particle_system/particle.h"
 #include "../settings.h"
 #include "../rendering/PPS_renderer.h"
 #include "../spatial_grid/simple_spatial_grid.h"
 #include "../spatial_grid/spatial_grid_renderer.h"
 
 
-#include "state.h"
 #include "../utilities/smooth_frame_rates.h"
 #include "../utilities/thread_pool.h"
 #include <functional>
@@ -22,9 +19,10 @@ inline static const int nearby_ids_max = ParticleSettings::cell_max_capacity * 9
 
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
-class ParticleManager : ParticleSettings
+class CollisionResolver : ParticleSettings
 {
-	o_vector<Entity> entities_;
+public:
+	o_vector<Entity>* entities_;
 	sf::RenderWindow* window_;
 	sf::Rect<float>* bounds_;
 
@@ -47,26 +45,13 @@ class ParticleManager : ParticleSettings
 	int resolution_frame_ = 0;  // toggles 0/1 each frame
 
 public:
-	RenderData render{};
-	WorldToggles toggles{};
-	WorldStatistics stats{};
+	CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* bounds, o_vector<Entity>* entities);
 
-	ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds);
-
-	void init_entities();
-
-	void update_particles();
-	void render_grid(sf::Vector2f query_pos);
-	void fill_snapshot(SimSnapshot& snapshot);
-
-	void repel_system_from_point(const sf::Vector2f point);
-
-private:
 	void add_particles_to_grid();
 	
-	sf::Color get_rand_white_color();
 	void init_collision_jobs();
 	void run_collision_detection();
+
 	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
 	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector, int check_count);

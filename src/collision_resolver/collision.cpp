@@ -1,9 +1,9 @@
-#include "particle_manager.h"
+#include "collision_resolver.h"
 
 #include <iostream>
 
 
-void ParticleManager::init_collision_jobs()
+void CollisionResolver::init_collision_jobs()
 {
 	collision_jobs_.clear();
 
@@ -25,13 +25,13 @@ void ParticleManager::init_collision_jobs()
 	}
 }
 
-void ParticleManager::run_collision_detection()
+void CollisionResolver::run_collision_detection()
 {
 	collision_thread_pool_.run_and_wait(); // single pass, no colour loop
 }
 
 
-void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
+void CollisionResolver::detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
 {
 	// This function handles all the collision detection for a grid cell, it is far more computationally efficient
 	// to collect all the particles around and in this cell into nearby_id's and then for each particle in this cell, check for collisions
@@ -66,10 +66,10 @@ void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, Fi
 		for (uint8_t idx = 0; idx < self_size; ++idx)
 		{
 			const int pid = self_contents[idx];
-			const sf::Vector2f pos = render.positions[pid];
+			const sf::Vector2f pos = entities_->at(pid)->position_;
 			const float ax = pos.x;
 			const float ay = pos.y;
-			const float r = render.radii[pid];
+			const float r = particle_radius;
 
 			if (!(ax - r >= cell_min_x && ax + r <= cell_max_x &&
 				ay - r >= cell_min_y && ay + r <= cell_max_y))
@@ -98,7 +98,7 @@ void ParticleManager::detect_collisions_for_grid_cell(const int grid_cell_id, Fi
 	}
 
 
-void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids)
+void CollisionResolver::update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids)
 {
 	// Out of bounds check
 	if (neighbour_index_x < 0 || neighbour_index_x >= static_cast<int>(grid.CellsX) ||
@@ -114,7 +114,7 @@ void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, c
 		nearby_ids.add(contents[idx]);
 }
 
-void ParticleManager::update_protozoa_cell(
+void CollisionResolver::update_protozoa_cell(
 	const int protozoa_cell_index,
 	const FixedSpan<uint32_t>&nearby_ids,
 	CollisionVector & collision_vector,
@@ -122,10 +122,10 @@ void ParticleManager::update_protozoa_cell(
 {
 	const int limit = (check_count < 0) ? nearby_ids.count : check_count;
 
-	const sf::Vector2f pos = render.positions[protozoa_cell_index];
+	const sf::Vector2f pos = entities_->at(protozoa_cell_index)->position_;
 	const float ax = pos.x;
 	const float ay = pos.y;
-	const float rad_a = render.radii[protozoa_cell_index];
+	const float rad_a = particle_radius;
 	const float rad_sq = (rad_a + rad_a) * (rad_a + rad_a);
 
 
@@ -136,7 +136,7 @@ void ParticleManager::update_protozoa_cell(
 		// Only process forward pairs — eliminates all (b,a) duplicates
 		if (id <= protozoa_cell_index) continue;
 
-		const sf::Vector2f other_pos = render.positions[id];
+		const sf::Vector2f other_pos = entities_->at(id)->position_;
 		const float dx = ax - other_pos.x;
 		const float dy = ay - other_pos.y;
 		const float length_sq = dx * dx + dy * dy;
@@ -147,7 +147,7 @@ void ParticleManager::update_protozoa_cell(
 	}
 }
 
-void ParticleManager::handle_collision_resolutions()
+void CollisionResolver::handle_collision_resolutions()
 {
 	//debug_collision_duplicates(); // debugging
 
@@ -158,7 +158,7 @@ void ParticleManager::handle_collision_resolutions()
 }
 
 
-void ParticleManager::resolve_collision_vector_collisions(CollisionVector& collision_vector)
+void CollisionResolver::resolve_collision_vector_collisions(CollisionVector& collision_vector)
 {
 	const int size = collision_vector.size();
 	if (size == 0)
@@ -171,18 +171,18 @@ void ParticleManager::resolve_collision_vector_collisions(CollisionVector& colli
 	{
 		if (pair.index_a != cached_id)
 		{
-			particle_a = entities_.at(pair.index_a);
+			particle_a = entities_->at(pair.index_a);
 			cached_id = pair.index_a;
 		}
 
-		resolve_pair_collision(particle_a, entities_.at(pair.index_b));
+		resolve_pair_collision(particle_a, entities_->at(pair.index_b));
 	}
 
 	collision_vector.clear();
 }
 
 
-void ParticleManager::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
+void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
 {
 
 	float rad_a = particle_radius; // Todo - dynamic radii
