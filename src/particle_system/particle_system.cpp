@@ -169,10 +169,15 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 	{
 		Entity* entity = entities_.add();
 		if (entity == nullptr)
+		{
 			entity = entities_.emplace(true);
+		}
 
 		if (entity == nullptr)
+		{
+			std::cout << "ParticleManager::add_particles_at_point: Failed to create new particle entity.\n";
 			break;
+		}
 
 		create_random_entity(entity, point + Random::rand_vector(-radius, radius));
 	}
