@@ -12,6 +12,7 @@
 #include "../utilities/smooth_frame_rates.h"
 #include "../utilities/thread_pool.h"
 #include <functional>
+#include <set>
 
 inline static const int nearby_ids_max = ParticleSettings::cell_max_capacity * 9;
 
@@ -20,11 +21,8 @@ inline static const int nearby_ids_max = ParticleSettings::cell_max_capacity * 9
 struct alignas(64) CollisionVector
 {
 	using CollisionPair = std::pair<int, int>;
-	std::vector<CollisionPair> collision_pairs_{};
+	std::vector<uint64_t> collision_pairs_{};
 	int size_ = 0; // determines the active indexes in the collision_pair vector
-
-	// a manual padding technique to force the struct to occupy exactly one 64-byte cache line
-	char padding_[64 - sizeof(std::vector<CollisionPair>) - sizeof(int)] = {};
 	
 	CollisionVector(int reserve)
 	{
@@ -33,10 +31,8 @@ struct alignas(64) CollisionVector
 
 	void add(int index_a, int index_b)
 	{
-		if (size_ >= static_cast<int>(collision_pairs_.size())) return;
-		collision_pairs_[size_].first = index_a;
-		collision_pairs_[size_].second = index_b;
-		++size_;
+		assert(size_ < static_cast<int>(collision_pairs_.size()));
+		collision_pairs_[size_++] = (static_cast<uint64_t>(index_a) << 32) | static_cast<uint32_t>(index_b);
 	}
 
 	void clear()
@@ -95,5 +91,6 @@ private:
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
 	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void handle_collision_resolutions();
+	void resolve_collision_vector_collisions(CollisionVector& collision_vector);
 	void resolve_pair_collision(Entity* particle_a, Entity* particle_b);
 };

@@ -63,7 +63,9 @@ public:
     {
 		const float clamped_x = std::fmod(std::fmod(x, world_width) + world_width, world_width);
 		const float clamped_y = std::fmod(std::fmod(y, world_height) + world_height, world_height);
+
         const cell_idx index = hash(clamped_x, clamped_y);
+
         uint8_t& cap = cell_capacities[index];
 
         if (cap < cell_max_capacity)

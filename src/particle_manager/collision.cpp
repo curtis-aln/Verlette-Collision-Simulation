@@ -75,6 +75,7 @@ void ParticleManager::update_nearby_container(const int32_t neighbour_index_x, c
 	const uint32_t neighbour_index = neighbour_index_y * grid.CellsX + neighbour_index_x;
 	const uint8_t size = grid.cell_capacities[neighbour_index];
 
+	// we multiply by grid.cell_max_capacity because the grid is a flat 1D array, and each cell has a fixed capacity
 	const auto* contents = &grid.grid[neighbour_index * grid.cell_max_capacity];
 	for (uint8_t idx = 0; idx < size; ++idx)
 		nearby_ids.add(contents[idx]);
@@ -90,8 +91,6 @@ void ParticleManager::update_protozoa_cell(
 	const float rad_a = render.radii[protozoa_cell_index];
 	const float rad_sq = (rad_a + rad_a) * (rad_a + rad_a);
 
-	int local_hits[155];
-	int hit_count = 0;
 
 	for (int idx = 0; idx < nearby_ids.count; ++idx)
 	{
@@ -105,35 +104,49 @@ void ParticleManager::update_protozoa_cell(
 		const float length_sq = dx * dx + dy * dy;
 
 		const bool colliding = (length_sq < rad_sq && length_sq >= 0.01f);
-		local_hits[hit_count] = id;
-		hit_count += colliding;
+		if (colliding)
+			collision_vector.add(protozoa_cell_index, id);
 	}
-
-	for (int i = 0; i < hit_count; ++i)
-		collision_vector.add(protozoa_cell_index, local_hits[i]);
 }
 
 void ParticleManager::handle_collision_resolutions()
 {
+	//debug_collision_duplicates(); // debugging
+
 	for (CollisionVector& collision_vector : collision_indexes)
 	{
-		float usage_percentage = collision_vector.size_ / static_cast<float>(collision_vector.collision_pairs_.size());
-
-		Entity* particle_a = entities_.at(collision_vector.collision_pairs_[0].first);
-		for (int i = 0; i < collision_vector.size_; i++)
-		{
-			CollisionVector::CollisionPair& pair = collision_vector.collision_pairs_[i];
-
-			// the way the collision list is built, particle_a repeats many time with many different particle b's
-			// so we can avoid constantly fetching particle_a from the entities_ vector by caching it
-			if (particle_a->id_ != pair.first)
-				particle_a = entities_.at(pair.first);
-
-			resolve_pair_collision(particle_a, entities_.at(pair.second));
-		}
-		collision_vector.clear();
+		resolve_collision_vector_collisions(collision_vector);
 	}
 }
+
+
+void ParticleManager::resolve_collision_vector_collisions(CollisionVector& collision_vector)
+{
+	const int size = collision_vector.size_;
+	if (size == 0)
+		return;
+
+	Entity* particle_a = nullptr;
+	int cached_id = -1;
+
+	for (int i = 0; i < size; ++i)
+	{
+		const uint64_t packed = collision_vector.collision_pairs_[i];
+		const int id_a = static_cast<int>(packed >> 32);
+		const int id_b = static_cast<int>(packed & 0xFFFFFFFF);
+
+		if (id_a != cached_id)
+		{
+			particle_a = entities_.at(id_a);
+			cached_id = id_a;
+		}
+
+		resolve_pair_collision(particle_a, entities_.at(id_b));
+	}
+
+	collision_vector.clear();
+}
+
 
 void ParticleManager::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
 {
