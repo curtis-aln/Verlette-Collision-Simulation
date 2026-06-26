@@ -90,7 +90,8 @@ void Simulation::render()
     handle_events();       
     setCaption();
 
-    window.clear();
+
+    window.clear(bg_color);
 
 	if (snap.toggles.draw_grid)
 		particleManager.render_grid(camera.get_world_mouse_pos());

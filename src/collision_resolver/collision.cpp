@@ -204,8 +204,6 @@ void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* parti
 	const float local_diam = rad_a + rad_b;
 	const float overlap = distance - local_diam;
 
-	const float correction_factor = 0.2f;
-
 	const sf::Vector2f collision_resolution = direction_normal * (overlap * 0.5f * correction_factor);
 	particle_a->position_ -= collision_resolution;
 	particle_b->position_ += collision_resolution;
@@ -217,7 +215,7 @@ void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* parti
 	float mass_a = rad_a; // Todo - dynamic mass
 	float mass_b = rad_b;
 
-	constexpr float restitution = .69f;
+	
 
 	// Each particle gets a share weighted by the *other* particle's mass fraction
 	const sf::Vector2f rel_vel = vel_a - vel_b;

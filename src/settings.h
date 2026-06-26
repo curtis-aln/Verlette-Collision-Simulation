@@ -1,8 +1,10 @@
 #pragma once
-
+#include <SFML/Graphics.hpp>
 
 struct SimulationSettings
 {
+    inline static const sf::Color bg_color = { 0, 0, 20 };
+
     inline static const unsigned int vertexReserve = 100;
 
     inline static const unsigned int circleSides = 15;
@@ -21,6 +23,16 @@ struct SimulationSettings
 
 struct ParticleSettings
 {
+    inline static const sf::Color color_rest = { 30, 60, 200 };
+    inline static const sf::Color color_max = { 255, 100, 0 };
+    inline static const float hue_shift_range = 40;
+    inline static const float init_velocity_range = 10.f;
+
+    inline static constexpr float friction = 0.999995f;
+
+    inline static constexpr float correction_factor = 0.2f;
+    inline static constexpr float restitution = .69f;
+
     inline static unsigned initial_thread_count = 15;
 
     inline static const unsigned int initial_particle_count = 5000;

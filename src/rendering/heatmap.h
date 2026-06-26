@@ -10,6 +10,8 @@
 
 #include "../settings.h"
 
+inline static constexpr int LUT_SIZE = 512;
+
 class DensityHeatmap
 {
 public:
@@ -44,8 +46,6 @@ public:
 
 private:
     // ── Gradient LUT ──────────────────────────────────────────────────────────
-
-    static constexpr int LUT_SIZE = 512;
 
     void precompute_lut();
 

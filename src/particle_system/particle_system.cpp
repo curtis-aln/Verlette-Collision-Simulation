@@ -12,7 +12,6 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 void ParticleManager::init_entities()
 {
 	std::cout << "init entities\n";
-	static float velocity_range = 10.21f;
 	for (int i = 0; i < ParticleSettings::initial_particle_count; ++i)
 	{
 		Entity* entity = entities_.emplace(true);
@@ -113,7 +112,8 @@ void ParticleManager::update_particles()
 		sf::Vector2f& velocity_ = entity->velocity_;
 
 		position_ += velocity_;
-		velocity_ *= 0.999995f;
+
+		velocity_ *= friction;
 
 		float speed = velocity_.length();
 		entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, speed, SimulationSettings::maxSpeed);
@@ -181,17 +181,19 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 void ParticleManager::create_random_entity(Entity* entity, sf::Vector2f position)
 {
 	entity->position_ = position;
-	entity->velocity_ = Random::rand_vector(-10.f, 10.f);
-	entity->color_rest_ = { 30, 60, 200 };
-	entity->color_max_ = { 255, 100, 0 };
-	const float hue_shift = Random::rand_range(0.f, 40.f);
-	entity->color_rest_ = shift_hue({ 30, 60, 200 }, hue_shift);
-	entity->color_max_ = shift_hue({ 255, 140, 0 }, hue_shift);
+	entity->velocity_ = Random::rand_vector(-init_velocity_range, init_velocity_range);
+	entity->color_rest_ = color_rest;
+	entity->color_max_ = color_max;
+
+	const float hue_shift = Random::rand_range(0.f, hue_shift_range);
+	entity->color_rest_ = shift_hue(color_rest, hue_shift);
+	entity->color_max_ = shift_hue(color_max, hue_shift);
 	entity->radius_ = Random::rand_range(ParticleSettings::particle_radius_min, ParticleSettings::particle_radius_max);
 }
 
 sf::Color ParticleManager::get_rand_white_color()
 {
+	// depricated
 	// generates a random white color so that when particles are densily packed you can easily see each one
 	constexpr int min = 160;
 	constexpr int max = 255;
