@@ -8,7 +8,7 @@ CollisionResolver::CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* 
 	: window_(window), bounds_(bounds), entities_(entities)
 {
 	init_collision_jobs();
-	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count / (initial_thread_count * 2)));
+	collision_indexes.resize(initial_thread_count, CollisionVector(particle_count / initial_thread_count));
 
 	collision_thread_pool_.set_jobs(collision_jobs_);  // once
 }

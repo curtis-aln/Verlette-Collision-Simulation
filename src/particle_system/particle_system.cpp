@@ -19,6 +19,7 @@ void ParticleManager::init_entities()
 		entity->position_ = Random::rand_pos_in_rect(*bounds_);
 		entity->velocity_ = Random::rand_vector(-velocity_range, velocity_range);
 		entity->color_ = get_rand_white_color();
+		entity->radius_ = Random::rand_range(ParticleSettings::particle_radius_min, ParticleSettings::particle_radius_max);
 	}
 }
 
@@ -41,7 +42,7 @@ void ParticleManager::update_particles()
 		position_ += velocity_;
 		velocity_ *= 0.999995f;
 
-		const float buffer = particle_radius;
+		const float buffer = entity->radius_;
 
 		const bool x_out_of_bounds = position_.x < bounds_->position.x + buffer || position_.x > bounds_->position.x + bounds_->size.x - buffer;
 		const bool y_out_of_bounds = position_.y < bounds_->position.y + buffer || position_.y > bounds_->position.y + bounds_->size.y - buffer;
@@ -70,7 +71,7 @@ void ParticleManager::render_grid(sf::Vector2f query_pos)
 void ParticleManager::repel_system_from_point(const sf::Vector2f point)
 {
 	static float magnitude = 142.f;
-	static float radius = ParticleSettings::particle_radius * 20.f;
+	static float radius = ParticleSettings::particle_radius_min * 20.f;
 	static float rad_sq = radius * radius;
 
 	for (Entity* entity : entities_)
@@ -123,10 +124,8 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 		Entity* entity = entities_.at(i);
 		render.positions[i] = entity->position_;
 		render.colors[i] = entity->color_;
-		render.radii[i] = particle_radius;
+		render.radii[i] = entity->radius_;
 	}
-
-	
 
 	std::memcpy(snapshot.render.positions.data(), render.positions.data(), n * sizeof(sf::Vector2f));
 	std::memcpy(snapshot.render.colors.data(), render.colors.data(), n * sizeof(sf::Color));

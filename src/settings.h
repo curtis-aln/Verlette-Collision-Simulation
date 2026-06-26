@@ -28,9 +28,10 @@ struct ParticleSettings
     inline static const float world_width = SimulationSettings::screen_width * SimulationSettings::scale_factor;
     inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
 
-    inline static const float particle_radius = 35.0f;
+    inline static const float particle_radius_min = 35.0f;
+    inline static const float particle_radius_max = 80.0f;
 
-    inline static uint32_t CellsX = 800;
+    inline static uint32_t CellsX = 600;
     inline static uint32_t CellsY = CellsX / SimulationSettings::aspect_ratio;
 	inline static const uint32_t cell_max_capacity = 6;
 

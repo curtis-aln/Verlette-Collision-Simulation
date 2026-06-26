@@ -66,10 +66,12 @@ void CollisionResolver::detect_collisions_for_grid_cell(const int grid_cell_id, 
 		for (uint8_t idx = 0; idx < self_size; ++idx)
 		{
 			const int pid = self_contents[idx];
-			const sf::Vector2f pos = entities_->at(pid)->position_;
+			Entity* particle = entities_->at(pid);
+
+			const sf::Vector2f pos = particle->position_;
 			const float ax = pos.x;
 			const float ay = pos.y;
-			const float r = particle_radius;
+			const float r = particle->radius_;
 
 			if (!(ax - r >= cell_min_x && ax + r <= cell_max_x &&
 				ay - r >= cell_min_y && ay + r <= cell_max_y))
@@ -122,11 +124,11 @@ void CollisionResolver::update_protozoa_cell(
 {
 	const int limit = (check_count < 0) ? nearby_ids.count : check_count;
 
-	const sf::Vector2f pos = entities_->at(protozoa_cell_index)->position_;
+	Entity* protozoa_cell = entities_->at(protozoa_cell_index);
+	const sf::Vector2f pos = protozoa_cell->position_;
 	const float ax = pos.x;
 	const float ay = pos.y;
-	const float rad_a = particle_radius;
-	const float rad_sq = (rad_a + rad_a) * (rad_a + rad_a);
+	const float rad_a = protozoa_cell->radius_;
 
 
 	for (int idx = 0; idx < limit; ++idx)
@@ -136,7 +138,11 @@ void CollisionResolver::update_protozoa_cell(
 		// Only process forward pairs — eliminates all (b,a) duplicates
 		if (id <= protozoa_cell_index) continue;
 
-		const sf::Vector2f other_pos = entities_->at(id)->position_;
+		Entity* other_cell = entities_->at(id);
+		const sf::Vector2f other_pos = other_cell->position_;
+
+		const float rad_b = other_cell->radius_; // Todo - dynamic radii
+		const float rad_sq = (rad_a + rad_b) * (rad_a + rad_b);
 		const float dx = ax - other_pos.x;
 		const float dy = ay - other_pos.y;
 		const float length_sq = dx * dx + dy * dy;
@@ -185,8 +191,8 @@ void CollisionResolver::resolve_collision_vector_collisions(CollisionVector& col
 void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
 {
 
-	float rad_a = particle_radius; // Todo - dynamic radii
-	float rad_b = particle_radius;
+	float rad_a = particle_a->radius_; // Todo - dynamic radii
+	float rad_b = particle_b->radius_;
 
 	// Collision resolution
 	sf::Vector2f direction = particle_a->position_ - particle_b->position_;

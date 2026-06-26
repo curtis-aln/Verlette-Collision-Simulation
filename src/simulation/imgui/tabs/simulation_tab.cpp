@@ -73,8 +73,11 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
     std::snprintf(buf, sizeof(buf), "%u", ParticleSettings::particle_count);
     const_row("Particle Count", buf);
 
-    std::snprintf(buf, sizeof(buf), "%.1f", ParticleSettings::particle_radius);
-    const_row("Particle Radius", buf);
+    std::snprintf(buf, sizeof(buf), "%.1f", ParticleSettings::particle_radius_min);
+    const_row("Particle Radius min", buf);
+
+    std::snprintf(buf, sizeof(buf), "%.1f", ParticleSettings::particle_radius_max);
+    const_row("Particle Radius max", buf);
 
     const float ww = static_cast<float>(ParticleSettings::world_width);
     const float wh = static_cast<float>(ParticleSettings::world_height);

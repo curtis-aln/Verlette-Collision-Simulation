@@ -32,7 +32,7 @@ PPS_Renderer::PPS_Renderer(sf::RenderWindow* window) : window_(window)
 
     debug_lines_.setPrimitiveType(sf::PrimitiveType::Lines);
 
-    texture = generate_circle_texture(ParticleSettings::particle_radius);
+    texture = generate_circle_texture(ParticleSettings::particle_radius_max);
     texture.setSmooth(true);
 
     states.blendMode = sf::BlendAdd;
@@ -62,8 +62,8 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
         { static_cast<int>(screen_width_), 0 }).x;
     const float visible_world_width = right - left;
 
-    const float transition_thresh_begin = 300.f * ParticleSettings::particle_radius;
-    const float transition_thresh_end = 500.f * ParticleSettings::particle_radius;
+    const float transition_thresh_begin = 500.f * ParticleSettings::particle_radius_min;
+    const float transition_thresh_end = 800.f * ParticleSettings::particle_radius_min;
     const float diff = transition_thresh_end - transition_thresh_begin;
 
     const auto& tgl = snapshot.toggles;
@@ -132,7 +132,7 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
 
         const sf::Vector2f pos = snapshot.render.positions[i];
         const float px_v = pos.x, py_v = pos.y;
-        const float r = ParticleSettings::particle_radius;
+        const float r = snapshot.render.radii[i];
 
         if (px_v < top_left.x || py_v < top_left.y ||
             px_v > bottom_right.x || py_v > bottom_right.y)
