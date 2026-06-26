@@ -48,6 +48,8 @@ public:
 	CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* bounds, o_vector<Entity>* entities);
 
 	void add_particles_to_grid();
+
+	void close_program();
 	
 	void init_collision_jobs();
 	void run_collision_detection();

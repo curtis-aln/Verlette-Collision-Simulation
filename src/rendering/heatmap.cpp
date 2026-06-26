@@ -186,6 +186,7 @@ void DensityHeatmap::precompute_lut()
     if (m_stops.empty())
     {
         m_stops = {
+            {0.00f, {0,0,0,0}},
             { 0.00f, { 0,   0,   0,   255 } },
             { 0.15f, { 0,   0,   180, 255 } },
             { 0.35f, { 0,   200, 255, 255 } },

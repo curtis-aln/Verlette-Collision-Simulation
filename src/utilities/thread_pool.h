@@ -18,8 +18,9 @@ class BarrierThreadPool
     const std::vector<std::function<void()>>* jobs_ = nullptr;  // non-owning ptr
     std::atomic<int>  pending_{ 0 };
     std::binary_semaphore all_done_sem_{ 0 };
-    bool stop_ = false;
     int  job_count_ = 0;
+
+    std::atomic<bool> stop_{ false };
 
 public:
     explicit BarrierThreadPool(int n)
@@ -42,6 +43,22 @@ public:
                             all_done_sem_.release();
                     }
                 });
+        }
+    }
+
+    ~BarrierThreadPool()
+    {
+        stop_.store(true, std::memory_order_release);
+
+        // Wake every worker so it can see stop_ and exit.
+        for (auto& worker : workers_)
+            worker->start_sem.release();
+
+        // Wait for all threads to finish.
+        for (auto& worker : workers_)
+        {
+            if (worker->thread.joinable())
+                worker->thread.join();
         }
     }
 

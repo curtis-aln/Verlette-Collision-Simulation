@@ -33,3 +33,8 @@ void CollisionResolver::add_particles_to_grid()
 		++i;
 	}
 }
+
+void CollisionResolver::close_program()
+{
+
+}

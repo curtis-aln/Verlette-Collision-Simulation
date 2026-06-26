@@ -3,14 +3,14 @@
 
 struct SimulationSettings
 {
-    inline static const sf::Color bg_color = { 0, 0, 20 };
+    inline static const sf::Color bg_color = { 0, 0, 40 };
 
     inline static const unsigned int vertexReserve = 100;
 
     inline static const unsigned int circleSides = 15;
     inline static const unsigned int deltaGridRate = 1;
 
-    inline static const float maxSpeed = 50.0f;
+    inline static const float maxSpeed = 15.0f;
 
     inline static const float zoomStrength = 1.0f;
 
