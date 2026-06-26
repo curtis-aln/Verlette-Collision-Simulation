@@ -23,13 +23,14 @@ struct ParticleSettings
 {
     inline static unsigned initial_thread_count = 15;
 
-    inline static const unsigned int particle_count = 500'000;
+    inline static const unsigned int initial_particle_count = 5000;
+    inline static const unsigned int maximum_particle_count = 1'000'000;
 
     inline static const float world_width = SimulationSettings::screen_width * SimulationSettings::scale_factor;
     inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
 
-    inline static const float particle_radius_min = 35.0f;
-    inline static const float particle_radius_max = 60.0f;
+    inline static const float particle_radius_min = 28.0f;
+    inline static const float particle_radius_max = 70.0f;
 
     inline static uint32_t CellsX = 400;
     inline static uint32_t CellsY = CellsX / SimulationSettings::aspect_ratio;

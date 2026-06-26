@@ -48,7 +48,7 @@ class Simulation : SimulationSettings
 	StopWatch m_delta_time_{};
 
 	// ── Triple-buffer (sim → render, lock-free) ───────────────────────────────
-	TripleBuffer<SimSnapshot> m_sim_buffer_{ ParticleSettings::particle_count };
+	TripleBuffer<SimSnapshot> m_sim_buffer_{ ParticleSettings::initial_particle_count };
 
 	// ── Command queue (render → sim, mutex-protected) ─────────────────────────
 	std::mutex             m_cmd_mutex{};

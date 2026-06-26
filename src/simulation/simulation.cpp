@@ -72,6 +72,8 @@ void Simulation::update()
 	snap.stats.fps = static_cast<float>(clock_.get_average_frame_rate());
    
     m_sim_buffer_.publish();
+
+
 }
 
 
@@ -194,6 +196,11 @@ void Simulation::dispatch_event(const sf::Event& event, const sf::Vector2f& cam_
     }
     else if (event.is<sf::Event::MouseButtonReleased>())
         handle_mouse_release();
+
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Middle))
+    {
+        particleManager.add_particles_at_point(cam_pos);
+    }
 }
 
 void Simulation::handle_pause_toggle()

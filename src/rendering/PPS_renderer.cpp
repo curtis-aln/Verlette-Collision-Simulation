@@ -27,8 +27,8 @@ inline sf::Texture generate_circle_texture(float radius)
 // ── Constructor ───────────────────────────────────────────────────────────────
 PPS_Renderer::PPS_Renderer(sf::RenderWindow* window) : window_(window)
 {
-    constexpr int vertex_count = ParticleSettings::particle_count * 6;
-    vertex_array.resize(vertex_count);
+    constexpr int initial_vertex_count = ParticleSettings::initial_particle_count * 6;
+    vertex_array.resize(initial_vertex_count);
 
     debug_lines_.setPrimitiveType(sf::PrimitiveType::Lines);
 
@@ -127,7 +127,8 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
 
     vertex_array.clear();
 
-    for (size_t i = 0; i < ParticleSettings::particle_count; ++i)
+    int particle_count = snapshot.stats.cell_particle_count;
+    for (size_t i = 0; i < particle_count; ++i)
     {
 
         const sf::Vector2f pos = snapshot.render.positions[i];

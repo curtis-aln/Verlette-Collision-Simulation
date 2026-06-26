@@ -70,7 +70,7 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
     // ══ WORLD CONSTANTS ═══════════════════════════════════════════════════════
     section_header("WORLD CONSTANTS");
 
-    std::snprintf(buf, sizeof(buf), "%u", ParticleSettings::particle_count);
+    std::snprintf(buf, sizeof(buf), "%u", snap.stats.cell_particle_count);
     const_row("Particle Count", buf);
 
     std::snprintf(buf, sizeof(buf), "%.1f", ParticleSettings::particle_radius_min);

@@ -36,7 +36,9 @@ public:
 
 	void init_entities();
 
-	void mutate_color(sf::Color& color, int range);
+	sf::Color mutate_color(const sf::Color& color, const int range);
+
+	sf::Color shift_hue(const sf::Color& color, const float degrees);
 
 
 	sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float speed, const float max_speed);
@@ -46,6 +48,10 @@ public:
 	void fill_snapshot(SimSnapshot& snapshot);
 
 	void repel_system_from_point(const sf::Vector2f point);
+
+	void add_particles_at_point(const sf::Vector2f point);
+
+	void create_random_entity(Entity* entity, sf::Vector2f position);
 
 private:
 	sf::Color get_rand_white_color();

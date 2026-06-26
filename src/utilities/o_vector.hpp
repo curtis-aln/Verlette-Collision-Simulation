@@ -142,7 +142,7 @@ public:
             free_list[free_count++] = id_;
         }
         
-        // setting the object's body_id_
+        // setting the object's id_
 		Obj* object = &raw_object_store_.back();
 		object->id_ = array_size - 1;
 
@@ -207,7 +207,11 @@ public:
     }
 
 
-    void remove(Obj* obj) { if (obj->active) remove(obj->body_id_); }
+    void remove(Obj* obj) 
+    { 
+        remove(obj->id_); 
+    }
+
     void remove(const unsigned vector_index)
     {
         if (active_[vector_index])
