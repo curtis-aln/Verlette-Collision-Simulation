@@ -18,9 +18,33 @@ void ParticleManager::init_entities()
 		Entity* entity = entities_.emplace(true);
 		entity->position_ = Random::rand_pos_in_rect(*bounds_);
 		entity->velocity_ = Random::rand_vector(-velocity_range, velocity_range);
-		entity->color_ = get_rand_white_color();
+
+		entity->color_rest_ = { 30, 60, 200 };
+		entity->color_max_ = { 255, 140, 0 };
+		
+		mutate_color(entity->color_rest_, 20);
+		mutate_color(entity->color_max_, 20);
 		entity->radius_ = Random::rand_range(ParticleSettings::particle_radius_min, ParticleSettings::particle_radius_max);
 	}
+}
+
+void ParticleManager::mutate_color(sf::Color& color, int range)
+{
+	color.r = static_cast<uint8_t>(std::clamp(static_cast<int>(color.r) + Random::rand_range(-range, range), 0, 255));
+	color.g = static_cast<uint8_t>(std::clamp(static_cast<int>(color.g) + Random::rand_range(-range, range), 0, 255));
+	color.b = static_cast<uint8_t>(std::clamp(static_cast<int>(color.b) + Random::rand_range(-range, range), 0, 255));
+}
+
+sf::Color ParticleManager::velocity_to_color(const sf::Color rest, const sf::Color max_color, const float speed, const float max_speed)
+{
+	const float t = speed >= max_speed ? 1.f : speed * (1.f / max_speed);
+
+	return sf::Color{
+		static_cast<uint8_t>(rest.r + static_cast<int>((max_color.r - rest.r) * t)),
+		static_cast<uint8_t>(rest.g + static_cast<int>((max_color.g - rest.g) * t)),
+		static_cast<uint8_t>(rest.b + static_cast<int>((max_color.b - rest.b) * t)),
+		static_cast<uint8_t>(rest.a + static_cast<int>((max_color.a - rest.a) * t))
+	};
 }
 
 void ParticleManager::update_particles()
@@ -41,6 +65,9 @@ void ParticleManager::update_particles()
 
 		position_ += velocity_;
 		velocity_ *= 0.999995f;
+
+		float speed = velocity_.length();
+		entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, speed, SimulationSettings::maxSpeed);
 
 		const float buffer = entity->radius_;
 

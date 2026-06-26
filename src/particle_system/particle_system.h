@@ -34,8 +34,12 @@ public:
 
 	ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds);
 
-
 	void init_entities();
+
+	void mutate_color(sf::Color& color, int range);
+
+
+	sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float speed, const float max_speed);
 
 	void update_particles();
 	void render_grid(sf::Vector2f query_pos);

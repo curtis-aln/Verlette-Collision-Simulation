@@ -10,7 +10,12 @@ public:
 
 	sf::Vector2f position_{};
 	sf::Vector2f velocity_{};
+
+	sf::Color color_rest_{};
+	sf::Color color_max_{};
+
 	sf::Color color_{};
+
 	float radius_{};
 
 	// constructor and destructor
