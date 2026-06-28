@@ -7,6 +7,11 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 	: window_(window), bounds_(bounds), entities_(ParticleSettings::maximum_particle_count)
 {
 	init_entities();
+
+	updating_jobs_.reserve(initial_thread_count);
+	active_entities.reserve(entities_.raw_objects_size());
+
+	init_updating_tp_jobs();
 }
 
 void ParticleManager::init_entities()
@@ -83,17 +88,60 @@ sf::Color ParticleManager::shift_hue(const sf::Color& color, const float degrees
 	};
 }
 
-sf::Color ParticleManager::velocity_to_color(const sf::Color rest, const sf::Color max_color, const float speed, const float max_speed)
+sf::Color ParticleManager::velocity_to_color(const sf::Color rest, const sf::Color max_color,
+	const float speed_sq, const float max_speed_sq)
 {
-	const float t = speed >= max_speed ? 1.f : speed * (1.f / max_speed);
+	// No sqrt — work in squared space entirely
+	const float t = speed_sq >= max_speed_sq ? 1.f : speed_sq * (1.f / max_speed_sq);
+
+	// Pack both colors into uint32 and do the lerp with integer math
+	const int dr = max_color.r - rest.r;
+	const int dg = max_color.g - rest.g;
+	const int db = max_color.b - rest.b;
+	const int da = max_color.a - rest.a;
 
 	return sf::Color{
-		static_cast<uint8_t>(rest.r + static_cast<int>((max_color.r - rest.r) * t)),
-		static_cast<uint8_t>(rest.g + static_cast<int>((max_color.g - rest.g) * t)),
-		static_cast<uint8_t>(rest.b + static_cast<int>((max_color.b - rest.b) * t)),
-		static_cast<uint8_t>(rest.a + static_cast<int>((max_color.a - rest.a) * t))
+		static_cast<uint8_t>(rest.r + static_cast<int>(dr * t)),
+		static_cast<uint8_t>(rest.g + static_cast<int>(dg * t)),
+		static_cast<uint8_t>(rest.b + static_cast<int>(db * t)),
+		static_cast<uint8_t>(rest.a + static_cast<int>(da * t))
 	};
 }
+
+void ParticleManager::init_updating_tp_jobs()
+{
+	// This funciton should be called every time a particle is added or removed from the system, 
+	// to ensure that the thread pool has the correct number of jobs to process
+
+	// Collect all active entities first
+	active_entities.clear();
+	for (Entity* e : entities_)
+		active_entities.push_back(e);
+
+	const sf::Vector2f bounds_pos = bounds_->position;
+	const sf::Vector2f bounds_size = bounds_->size;
+
+	// Now split the *active* list evenly across threads
+	const int total_active = active_entities.size();
+	const int chunk = std::max(1, (total_active + (int)initial_thread_count - 1) / (int)initial_thread_count);
+
+	for (int t = 0; t < (int)initial_thread_count; ++t)
+	{
+		const int begin = t * chunk;
+		if (begin >= total_active) break;
+		const int end = std::min(begin + chunk, total_active);
+
+		updating_jobs_.emplace_back([this, begin, end, bounds_pos, bounds_size]
+			{
+				for (int i = begin; i < end; ++i)
+				{
+					update_particle(active_entities[i], bounds_pos, bounds_size);
+				}
+			});
+	}
+	updating_thread_pool_.set_jobs(updating_jobs_);
+}
+
 
 void ParticleManager::update_particles()
 {
@@ -102,7 +150,7 @@ void ParticleManager::update_particles()
 	stats.iterations_++;
 
 	// Collisions
-	// // 250fps down to 60fps
+	// // 1100fps down to 60fps
 	collision_resolver_.add_particles_to_grid();        // Particles get added to the spatial grid
 	
 	// 63fps down to 45fps
@@ -111,36 +159,38 @@ void ParticleManager::update_particles()
 	// 45fps down to 42fps
 	collision_resolver_.handle_collision_resolutions(); // Overlapping particles are resolved
 
-	for (Entity* entity : entities_)
-	{
-		sf::Vector2f& position_ = entity->position_;
-		sf::Vector2f& velocity_ = entity->velocity_;
+	// Multithreadding
+	updating_thread_pool_.run_and_wait();
+}
 
-		position_ += velocity_;
+void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds_pos, const sf::Vector2f& bounds_size)
+{
+	sf::Vector2f& position_ = entity->position_;
+	sf::Vector2f& velocity_ = entity->velocity_;
 
-		velocity_ *= friction;
-		//velocity_ += sf::Vector2f(0, 0.01f); // gravity
+	position_ += velocity_;
 
-		float speed = velocity_.length();
-		entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, speed, SimulationSettings::maxSpeed);
+	velocity_ *= friction;
+	//velocity_ += sf::Vector2f(0, 0.01f); // gravity
 
-		const float buffer = entity->radius_;
+	float speed_sq = velocity_.lengthSquared();
+	static const float max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
+	entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, speed_sq, max_speed_sq);
 
-		const bool x_out_of_bounds = position_.x < bounds_->position.x + buffer || position_.x > bounds_->position.x + bounds_->size.x - buffer;
-		const bool y_out_of_bounds = position_.y < bounds_->position.y + buffer || position_.y > bounds_->position.y + bounds_->size.y - buffer;
+	const float buffer = entity->radius_;
 
-		if (x_out_of_bounds) {
-			velocity_.x *= -1;
-		}
+	const float x_min = bounds_pos.x + buffer;
+	const float y_min = bounds_pos.y + buffer;
+	const float x_max = bounds_pos.x + bounds_size.x - buffer;
+	const float y_max = bounds_pos.y + bounds_size.y - buffer;
 
-		if (y_out_of_bounds) {
-			velocity_.y *= -1;
-		}
+	// Branchless velocity flip — no branch misprediction
+	velocity_.x *= 1.f - 2.f * (position_.x < x_min || position_.x > x_max);
+	velocity_.y *= 1.f - 2.f * (position_.y < y_min || position_.y > y_max);
 
-		position_.x = std::max(bounds_->position.x + buffer, std::min(position_.x, bounds_->position.x + bounds_->size.x - buffer));
-		position_.y = std::max(bounds_->position.y + buffer, std::min(position_.y, bounds_->position.y + bounds_->size.y - buffer));
-
-	}
+	// Clamp position
+	position_.x = std::clamp(position_.x, x_min, x_max);
+	position_.y = std::clamp(position_.y, y_min, y_max);
 }
 
 
@@ -189,6 +239,8 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 
 		collision_resolver_.add_particles_to_grid();
 	}
+
+	init_updating_tp_jobs();
 }
 
 void ParticleManager::create_random_entity(Entity* entity, sf::Vector2f position)
@@ -217,32 +269,35 @@ sf::Color ParticleManager::get_rand_white_color()
 	return sf::Color{ col_t, col_t, col_t, transparency };
 }
 
-
-
 void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 {
-	const int n = entities_.size();
+	const int n = static_cast<int>(entities_.size());
 	stats.cell_particle_count = n;
 
 	snapshot.toggles = toggles;
 	snapshot.stats = stats;
 
-	snapshot.render.positions.resize(n);
-	snapshot.render.colors.resize(n);
-	snapshot.render.radii.resize(n);
-	render.positions.resize(n);
-	render.colors.resize(n);
-	render.radii.resize(n);
+	// These should be done once at init / on entity count change, not every frame
+	// snapshot.render.positions/colors/radii should already be the right size
+	// If you must guard it:
+	if (static_cast<int>(snapshot.render.positions.size()) != n)
+	{
+		snapshot.render.positions.resize(n);
+		snapshot.render.colors.resize(n);
+		snapshot.render.radii.resize(n);
+	}
+
+	// Single pass, write directly into snapshot — no intermediate buffer
+	// If you have SoA (soa.x, soa.y, soa.radius) use that instead of entity pointers
+	sf::Vector2f* __restrict pos_dst = snapshot.render.positions.data();
+	sf::Color* __restrict col_dst = snapshot.render.colors.data();
+	float* __restrict rad_dst = snapshot.render.radii.data();
 
 	for (int i = 0; i < n; ++i)
 	{
-		Entity* entity = entities_.at(i);
-		render.positions[i] = entity->position_;
-		render.colors[i] = entity->color_;
-		render.radii[i] = entity->radius_;
+		const Entity* e = entities_.at(i);
+		pos_dst[i] = e->position_;
+		col_dst[i] = e->color_;
+		rad_dst[i] = e->radius_;
 	}
-
-	std::memcpy(snapshot.render.positions.data(), render.positions.data(), n * sizeof(sf::Vector2f));
-	std::memcpy(snapshot.render.colors.data(), render.colors.data(), n * sizeof(sf::Color));
-	std::memcpy(snapshot.render.radii.data(), render.radii.data(), n * sizeof(float));
 }

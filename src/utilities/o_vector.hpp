@@ -114,6 +114,7 @@ public:
     [[nodiscard]] Iterator begin() const { return Iterator(const_cast<o_vector*>(this), getFirstAvalableIteration()); }
     [[nodiscard]] Iterator end()   const { return Iterator(const_cast<o_vector*>(this), array_size); }
     [[nodiscard]] unsigned size()  const { return active_objs; }
+    [[nodiscard]] unsigned raw_objects_size()  const { return raw_object_store_.size(); }
 	[[nodiscard]] bool can_add() const { return free_count > 0; }
 
 

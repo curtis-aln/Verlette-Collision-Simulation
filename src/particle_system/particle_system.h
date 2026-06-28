@@ -27,6 +27,12 @@ class ParticleManager : ParticleSettings
 	SpatialGridRenderer grid_renderer_{ &collision_resolver_.grid };
 	FrameRateSmoothing<30> frame_rate_smoothing_{};
 
+	// This threadpool is responsible for updating the particles in the simulation
+	BarrierThreadPool updating_thread_pool_{ static_cast<int>(initial_thread_count) };
+	std::vector<std::function<void()>> updating_jobs_;
+
+	std::vector<Entity*> active_entities;
+
 public:
 	RenderData render{};
 	WorldToggles toggles{};
@@ -43,7 +49,10 @@ public:
 
 	sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float speed, const float max_speed);
 
+	void init_updating_tp_jobs();
+
 	void update_particles();
+	void update_particle(Entity* entity, const sf::Vector2f& bounds_pos, const sf::Vector2f& bounds_size);
 	void render_grid(sf::Vector2f query_pos);
 	void fill_snapshot(SimSnapshot& snapshot);
 
@@ -55,5 +64,4 @@ public:
 
 private:
 	sf::Color get_rand_white_color();
-	void init_collision_jobs();
 };

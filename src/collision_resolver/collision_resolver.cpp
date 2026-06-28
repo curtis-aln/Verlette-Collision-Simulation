@@ -50,10 +50,7 @@ void CollisionResolver::update_particles_grid_indexes()
         const Entity* entity = entities_->at(obj_id);
         const sf::Vector2f pos = entity->position_;
 
-        const float clamped_x = std::fmod(std::fmod(pos.x, grid.world_width) + grid.world_width, grid.world_width);
-        const float clamped_y = std::fmod(std::fmod(pos.y, grid.world_height) + grid.world_height, grid.world_height);
-
-        const cell_idx new_cell = grid.hash(clamped_x, clamped_y);
+        const cell_idx new_cell = grid.hash(pos.x, pos.y);
         const cell_idx old_cell = grid.prev_cells[obj_id];
 
         if (new_cell == old_cell) continue;

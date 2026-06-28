@@ -149,10 +149,7 @@ public:
 
     cell_idx inline add_object(const float x, const float y, const size_t obj_id)
     {
-        const float clamped_x = std::fmod(std::fmod(x, world_width) + world_width, world_width);
-        const float clamped_y = std::fmod(std::fmod(y, world_height) + world_height, world_height);
-
-        const cell_idx index = hash(clamped_x, clamped_y);
+        const cell_idx index = hash(x, y);
         uint8_t& cap = cell_capacities[index];
 
         if (cap < cell_max_capacity)
