@@ -80,8 +80,9 @@ add_executable(SpatialHashGrid
     src/simulation/imgui/tabs/simulation_tab.cpp
     src/simulation/imgui/imgui_handling.cpp
 
-    src/collision_resolver/collision.cpp 
-    src/collision_resolver/collision_resolver.cpp 
+    src/collision_resolver/detection.cpp
+    src/collision_resolver/resolution.cpp
+    src/collision_resolver/updating_grid.cpp
 
     "src/utilities/camera.h" 
     "src/simulation/simulation.h" 
@@ -95,7 +96,7 @@ add_executable(SpatialHashGrid
     "src/simulation/imgui/tabs/i_tab.h" 
     "src/utilities/stopwatch.h" 
     
-    "src/collision_resolver/collision_vector.h")
+    "src/collision_resolver/collision_vector.h" "src/collision_resolver/init.cpp" "src/collision_resolver/updating_grid.cpp")
 
 
 # ── Include directories ───────────────────────────────────────────────────────
