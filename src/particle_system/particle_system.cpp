@@ -12,6 +12,8 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 	active_entities.reserve(entities_.raw_objects_size());
 
 	init_updating_tp_jobs();
+
+	collision_resolver_.add_particles_to_grid();
 }
 
 void ParticleManager::init_entities()
@@ -143,6 +145,8 @@ void ParticleManager::init_updating_tp_jobs()
 }
 
 
+
+
 void ParticleManager::update_particles()
 {
 	frame_rate_smoothing_.update_frame_rate();
@@ -151,7 +155,7 @@ void ParticleManager::update_particles()
 
 	// Collisions
 	// // 1100fps down to 60fps
-	collision_resolver_.add_particles_to_grid();        // Particles get added to the spatial grid
+	collision_resolver_.update_particles_grid_indexes();        // Particles get added to the spatial grid
 	
 	// 63fps down to 45fps
 	collision_resolver_.run_collision_detection();      // Overlapping particles are added to a container
@@ -165,18 +169,19 @@ void ParticleManager::update_particles()
 
 void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds_pos, const sf::Vector2f& bounds_size)
 {
-	sf::Vector2f& position_ = entity->position_;
-	sf::Vector2f& velocity_ = entity->velocity_;
 
-	position_ += velocity_;
+	// Read all entity data upfront, before any function calls
+	sf::Vector2f pos = entity->position_;
+	sf::Vector2f vel = entity->velocity_;
+	const float  radius = entity->radius_;       // hoisted
+	const sf::Color rest = entity->color_rest_;
+	const sf::Color cmax = entity->color_max_;
 
-	velocity_ *= friction;
+	pos += vel;
+	vel *= friction;
 	//velocity_ += sf::Vector2f(0, 0.01f); // gravity
 
-	float speed_sq = velocity_.lengthSquared();
-	static const float max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
-	entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, speed_sq, max_speed_sq);
-
+	// Boundary Check
 	const float buffer = entity->radius_;
 
 	const float x_min = bounds_pos.x + buffer;
@@ -185,12 +190,19 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	const float y_max = bounds_pos.y + bounds_size.y - buffer;
 
 	// Branchless velocity flip — no branch misprediction
-	velocity_.x *= 1.f - 2.f * (position_.x < x_min || position_.x > x_max);
-	velocity_.y *= 1.f - 2.f * (position_.y < y_min || position_.y > y_max);
+	vel.x *= 1.f - 2.f * (pos.x < x_min || pos.x > x_max);
+	vel.y *= 1.f - 2.f * (pos.y < y_min || pos.y > y_max);
 
 	// Clamp position
-	position_.x = std::clamp(position_.x, x_min, x_max);
-	position_.y = std::clamp(position_.y, y_min, y_max);
+	pos.x = std::clamp(pos.x, x_min, x_max);
+	pos.y = std::clamp(pos.y, y_min, y_max);
+
+	static const float max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
+	entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, vel.lengthSquared(), max_speed_sq);
+
+	// Write back
+	entity->position_ = pos;
+	entity->velocity_ = vel;
 }
 
 

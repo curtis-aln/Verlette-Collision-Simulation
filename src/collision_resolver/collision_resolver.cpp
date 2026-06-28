@@ -16,6 +16,7 @@ CollisionResolver::CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* 
 
     
     grid.prev_cells.resize(entities_->size());
+    grid.entity_slot.assign(entities_->size(), 0);
     add_particles_to_grid();
 }
 
@@ -27,6 +28,7 @@ void CollisionResolver::add_particles_to_grid()
 
 	grid.clear();
     grid.prev_cells.resize(entities_->size());
+    grid.entity_slot.assign(entities_->size(), 0);
 
 	int i = 0;
 	for (Entity* entity : *entities_)
@@ -43,36 +45,53 @@ void CollisionResolver::add_particles_to_grid()
 
 void CollisionResolver::update_particles_grid_indexes()
 {
-    grid.prev_cells.resize(entities_->size(), 0);
+    const int n = static_cast<int>(entities_->size());
 
-    for (int obj_id = 0; obj_id < static_cast<int>(entities_->size()); ++obj_id)
+    // Precompute to avoid member dereference in loop
+    const uint32_t cap = grid.cell_max_capacity;
+    const float    inv_cw = 1.f / grid.cell_width;
+    const float    inv_ch = 1.f / grid.cell_height;
+
+    cell_idx* __restrict prev = grid.prev_cells.data();
+    uint8_t* __restrict slots = grid.entity_slot.data();
+    uint8_t* __restrict counts = grid.cell_capacities.data();
+    obj_idx* __restrict gdata = grid.grid.data();
+
+    for (int obj_id = 0; obj_id < n; ++obj_id)
     {
-        const Entity* entity = entities_->at(obj_id);
-        const sf::Vector2f pos = entity->position_;
+        const sf::Vector2f pos = entities_->at(obj_id)->position_;
 
-        const cell_idx new_cell = grid.hash(pos.x, pos.y);
-        const cell_idx old_cell = grid.prev_cells[obj_id];
+        const cell_idx new_cell = calcZOrder(
+            static_cast<uint16_t>(pos.x * inv_cw),
+            static_cast<uint16_t>(pos.y * inv_ch)
+        );
 
+        const cell_idx old_cell = prev[obj_id];
         if (new_cell == old_cell) continue;
 
-        // Remove from old cell by swapping with the last entry
-        uint8_t& old_cap = grid.cell_capacities[old_cell];
-        obj_idx* old_data = &grid.grid[old_cell * grid.cell_max_capacity];
-        for (uint8_t i = 0; i < old_cap; ++i)
+        // O(1) remove using slot tracking
+        const uint8_t  my_slot = slots[obj_id];
+        uint8_t& old_cap = counts[old_cell];
+        obj_idx* old_data = gdata + old_cell * cap;
+
+        --old_cap;
+        if (my_slot != old_cap)
         {
-            if (old_data[i] == static_cast<obj_idx>(obj_id))
-            {
-                old_data[i] = old_data[--old_cap]; // fill gap with last element
-                break;
-            }
+            const obj_idx displaced = old_data[old_cap];
+            old_data[my_slot] = displaced;
+            slots[displaced] = my_slot;
         }
 
-        // Insert into new cell
-        uint8_t& new_cap = grid.cell_capacities[new_cell];
-        if (new_cap < grid.cell_max_capacity)
-            grid.grid[new_cell * grid.cell_max_capacity + new_cap++] = static_cast<obj_idx>(obj_id);
+        // O(1) insert
+        uint8_t& new_cap = counts[new_cell];
+        if (new_cap < cap)
+        {
+            gdata[new_cell * cap + new_cap] = static_cast<obj_idx>(obj_id);
+            slots[obj_id] = new_cap;
+            ++new_cap;
+        }
 
-        grid.prev_cells[obj_id] = new_cell;
+        prev[obj_id] = new_cell;
     }
 }
 

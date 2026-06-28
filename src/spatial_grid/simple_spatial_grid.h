@@ -96,6 +96,7 @@ struct SimpleSpatialGrid
 
 	// Used to calculate if particles have changed cells since last frames.
     std::vector<cell_idx> prev_cells;
+    std::vector<uint8_t>  entity_slot; // which slot within its cell each entity occupies
 
 public:
     explicit SimpleSpatialGrid(uint32_t cells_x, uint32_t cells_y, uint32_t cell_capacity,
@@ -114,6 +115,7 @@ public:
         // index is calcZOrder(CellsX-1, CellsY-1), so we size to that + 1.
         const uint32_t total = mortonTableSize(cells_x, cells_y);
         grid.resize(total * cell_max_capacity, 0);
+
         cell_capacities.resize(total, 0);
 
         update_cell_dimensions();
@@ -153,7 +155,10 @@ public:
         uint8_t& cap = cell_capacities[index];
 
         if (cap < cell_max_capacity)
+        {
+            entity_slot[obj_id] = cap;
             grid[index * cell_max_capacity + cap++] = static_cast<obj_idx>(obj_id);
+        }
 
         prev_cells[obj_id] = index;
 

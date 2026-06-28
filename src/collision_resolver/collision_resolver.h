@@ -34,11 +34,16 @@ public:
 	// for multithreadded collision resolution
 	BarrierThreadPool collision_thread_pool_{ static_cast<int>(initial_thread_count) };
 
+	BarrierThreadPool add_to_grid_thread_pool_{ static_cast<int>(initial_thread_count) };
+
 	static thread_local FixedSpan<uint32_t> tl_nearby_ids;
 
 	alignas(64) std::vector<sf::Vector2f> entity_velocities_;
 	std::vector<std::function<void()>> collision_jobs_;
-	
+	std::vector<std::function<void()>> add_to_grid_jobs_;
+
+	std::vector<uint32_t> morton_indices;
+
 	std::vector<CollisionVector> collision_indexes{};
 
 	// ---------------------------

@@ -267,3 +267,4 @@ void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* parti
 	particle_a->velocity_ -= resolution_a;
 	particle_b->velocity_ += resolution_b;
 }
+
