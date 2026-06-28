@@ -102,8 +102,13 @@ void ParticleManager::update_particles()
 	stats.iterations_++;
 
 	// Collisions
+	// // 250fps down to 60fps
 	collision_resolver_.add_particles_to_grid();        // Particles get added to the spatial grid
+	
+	// 63fps down to 45fps
 	collision_resolver_.run_collision_detection();      // Overlapping particles are added to a container
+	
+	// 45fps down to 42fps
 	collision_resolver_.handle_collision_resolutions(); // Overlapping particles are resolved
 
 	for (Entity* entity : entities_)
@@ -114,6 +119,7 @@ void ParticleManager::update_particles()
 		position_ += velocity_;
 
 		velocity_ *= friction;
+		//velocity_ += sf::Vector2f(0, 0.01f); // gravity
 
 		float speed = velocity_.length();
 		entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, speed, SimulationSettings::maxSpeed);
@@ -180,6 +186,8 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 		}
 
 		create_random_entity(entity, point + Random::rand_vector(-radius, radius));
+
+		collision_resolver_.add_particles_to_grid();
 	}
 }
 

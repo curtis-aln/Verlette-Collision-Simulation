@@ -49,10 +49,14 @@ public:
 
 	void add_particles_to_grid();
 
+	void update_particles_grid_indexes();
+
 	void close_program();
 	
 	void init_collision_jobs();
 	void run_collision_detection();
+
+	void primitive_detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 
 	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);

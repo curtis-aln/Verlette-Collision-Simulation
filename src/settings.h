@@ -18,7 +18,7 @@ struct SimulationSettings
     inline static const float screen_height = 1000.0f;
     inline static const float aspect_ratio = screen_width / screen_height;
 
-    inline static float scale_factor = 50.0f;
+    inline static float scale_factor = 115.0f;
 };
 
 struct ParticleSettings
@@ -35,17 +35,17 @@ struct ParticleSettings
 
     inline static unsigned initial_thread_count = 15;
 
-    inline static const unsigned int initial_particle_count = 5000;
-    inline static const unsigned int maximum_particle_count = 1'000'000;
+    inline static const unsigned int initial_particle_count = 400'000;
+    inline static const unsigned int maximum_particle_count = 700'000;
 
-    inline static const float world_width = SimulationSettings::screen_width * SimulationSettings::scale_factor;
+    inline static const float world_width = SimulationSettings::screen_height * SimulationSettings::scale_factor;
     inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
 
     inline static const float particle_radius_min = 28.0f;
     inline static const float particle_radius_max = 70.0f;
 
-    inline static uint32_t CellsX = 400;
-    inline static uint32_t CellsY = CellsX / SimulationSettings::aspect_ratio;
+    inline static uint32_t CellsX = (1u << 9);
+    inline static uint32_t CellsY = CellsX;
 	inline static const uint32_t cell_max_capacity = 6;
 
     sf::Color colorActive = { 255, 0, 0 };

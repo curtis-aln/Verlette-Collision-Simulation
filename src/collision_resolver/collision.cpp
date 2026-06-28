@@ -7,29 +7,60 @@ void CollisionResolver::init_collision_jobs()
 {
 	collision_jobs_.clear();
 
-	const int total_cells = grid.CellsX * grid.CellsY;
-	const int chunk = std::max(1u, (total_cells + initial_thread_count - 1) / initial_thread_count);
+	// Build the list of valid Morton indices up front
+	const uint32_t cells_x = grid.CellsX;
+	const uint32_t cells_y = grid.CellsY;
 
-	for (int t = 0; t < initial_thread_count; ++t)
+	// Total logical cells is still CellsX * CellsY, just not contiguous in memory
+	const int total_cells = static_cast<int>(cells_x * cells_y);
+	const int chunk = std::max(1, (total_cells + (int)initial_thread_count - 1) / (int)initial_thread_count);
+
+	// Pre-build the Morton index list so threads just index into it
+	std::vector<uint32_t> morton_indices;
+	morton_indices.reserve(total_cells);
+	for (uint32_t cy = 0; cy < cells_y; ++cy)
+		for (uint32_t cx = 0; cx < cells_x; ++cx)
+			morton_indices.push_back(calcZOrder(static_cast<uint16_t>(cx),
+				static_cast<uint16_t>(cy)));
+
+	for (int t = 0; t < (int)initial_thread_count; ++t)
 	{
 		const int begin = t * chunk;
 		if (begin >= total_cells) break;
 		const int end = std::min(begin + chunk, total_cells);
 
-		collision_jobs_.emplace_back([this, begin, end, t]
+		collision_jobs_.emplace_back([this, begin, end, t, morton_indices]
 			{
 				thread_local FixedSpan<uint32_t> local_nearby_ids = tl_nearby_ids;
 				for (int i = begin; i < end; ++i)
-					detect_collisions_for_grid_cell(i, local_nearby_ids, collision_indexes[t]);
+					primitive_detect_collisions_for_grid_cell(morton_indices[i], local_nearby_ids, collision_indexes[t]);
 			});
 	}
 }
 
 void CollisionResolver::run_collision_detection()
 {
+	// clearing collision vectors for each thread
+	for (auto& collision_vector : collision_indexes)
+		collision_vector.clear();
+
 	collision_thread_pool_.run_and_wait(); // single pass, no colour loop
 }
 
+
+void CollisionResolver::primitive_detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
+{
+	grid.find_from_index(grid_cell_id, &nearby_ids);
+
+	const uint8_t self_size = grid.cell_capacities[grid_cell_id];
+	const auto* self_contents = &grid.grid[grid_cell_id * grid.cell_max_capacity];
+
+	for (uint8_t idx = 0; idx < self_size; ++idx)
+	{
+		const int pid = self_contents[idx];
+		update_protozoa_cell(pid, nearby_ids, collision_vector, -1);
+	}
+}
 
 void CollisionResolver::detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector)
 {
@@ -183,8 +214,6 @@ void CollisionResolver::resolve_collision_vector_collisions(CollisionVector& col
 
 		resolve_pair_collision(particle_a, entities_->at(pair.index_b));
 	}
-
-	collision_vector.clear();
 }
 
 

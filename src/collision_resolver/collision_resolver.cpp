@@ -7,10 +7,16 @@ thread_local FixedSpan<uint32_t> CollisionResolver::tl_nearby_ids{ nearby_ids_ma
 CollisionResolver::CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* bounds, o_vector<Entity>* entities)
 	: window_(window), bounds_(bounds), entities_(entities)
 {
+    grid.prev_cells.reserve(maximum_particle_count);
+
 	init_collision_jobs();
 	collision_indexes.resize(initial_thread_count, CollisionVector(maximum_particle_count / initial_thread_count));
 
 	collision_thread_pool_.set_jobs(collision_jobs_);  // once
+
+    
+    grid.prev_cells.resize(entities_->size());
+    add_particles_to_grid();
 }
 
 
@@ -20,6 +26,7 @@ void CollisionResolver::add_particles_to_grid()
 	const int frame_parity = resolution_frame_ & 1;
 
 	grid.clear();
+    grid.prev_cells.resize(entities_->size());
 
 	int i = 0;
 	for (Entity* entity : *entities_)
@@ -32,6 +39,44 @@ void CollisionResolver::add_particles_to_grid()
 
 		++i;
 	}
+}
+
+void CollisionResolver::update_particles_grid_indexes()
+{
+    grid.prev_cells.resize(entities_->size(), 0);
+
+    for (int obj_id = 0; obj_id < static_cast<int>(entities_->size()); ++obj_id)
+    {
+        const Entity* entity = entities_->at(obj_id);
+        const sf::Vector2f pos = entity->position_;
+
+        const float clamped_x = std::fmod(std::fmod(pos.x, grid.world_width) + grid.world_width, grid.world_width);
+        const float clamped_y = std::fmod(std::fmod(pos.y, grid.world_height) + grid.world_height, grid.world_height);
+
+        const cell_idx new_cell = grid.hash(clamped_x, clamped_y);
+        const cell_idx old_cell = grid.prev_cells[obj_id];
+
+        if (new_cell == old_cell) continue;
+
+        // Remove from old cell by swapping with the last entry
+        uint8_t& old_cap = grid.cell_capacities[old_cell];
+        obj_idx* old_data = &grid.grid[old_cell * grid.cell_max_capacity];
+        for (uint8_t i = 0; i < old_cap; ++i)
+        {
+            if (old_data[i] == static_cast<obj_idx>(obj_id))
+            {
+                old_data[i] = old_data[--old_cap]; // fill gap with last element
+                break;
+            }
+        }
+
+        // Insert into new cell
+        uint8_t& new_cap = grid.cell_capacities[new_cell];
+        if (new_cap < grid.cell_max_capacity)
+            grid.grid[new_cell * grid.cell_max_capacity + new_cap++] = static_cast<obj_idx>(obj_id);
+
+        grid.prev_cells[obj_id] = new_cell;
+    }
 }
 
 void CollisionResolver::close_program()
