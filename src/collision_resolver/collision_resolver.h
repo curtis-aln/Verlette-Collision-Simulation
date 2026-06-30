@@ -18,8 +18,8 @@ Modify the Settings struct to change the grid size, cell capacity, and collision
 
 struct ResolutionSettings
 {
-	inline static uint32_t CellsX = (1u << 10); // for morton indexing, must be a power of 2
-	inline static uint32_t CellsY = CellsX;     // square worlds
+	inline static uint32_t cells_x = (1u << 10); // for morton indexing, must be a power of 2
+	inline static uint32_t cells_y = cells_x;     // square worlds
 	inline static const uint32_t cell_max_capacity = 6; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
 
 	inline static constexpr float correction_factor = 0.2f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
@@ -34,12 +34,12 @@ inline static const int nearby_ids_max = ResolutionSettings::cell_max_capacity *
 // This class is resonsible for the updating and rendering of the particles in the simulation
 class CollisionResolver : ResolutionSettings
 {
-	int thread_count{};
+	int thread_count_{};
 
-	o_vector<Entity>* entities_; // pointer to the particle vector, not owned by this class
+	o_vector<Entity>* collision_bodies_; // pointer to the particle vector, not owned by this class
 
 	// The grid used for collision resolution
-	SimpleSpatialGrid grid;
+	SimpleSpatialGrid spatial_grid_;
 
 	// for multithreadded collision resolution
 	BarrierThreadPool collision_thread_pool_;
@@ -50,11 +50,10 @@ class CollisionResolver : ResolutionSettings
 	std::vector<std::function<void()>> add_to_grid_jobs_;
 
 	// This is used in the collision detection to collect all the nearby particles for a given cell
-	static thread_local FixedSpan<uint32_t> tl_nearby_ids;
+	static thread_local FixedSpan<uint32_t> tl_nearby_ids_;
 
-	std::vector<uint32_t> morton_indices;
-
-	std::vector<CollisionVector> collision_indexes{};
+	// This is used to store the collisions detected by each thread, each thread has its own collision vector to avoid contention
+	std::vector<CollisionVector> collision_indexes_{};
 
 	// ---------------------------
 	int resolution_frame_ = 0;  // toggles 0/1 each frame
@@ -80,7 +79,7 @@ public:
 	void close_program();
 
 	// Fetching Functions
-	SimpleSpatialGrid* get_grid() { return &grid; }
+	SimpleSpatialGrid* get_grid() { return &spatial_grid_; }
 
 private:
 	// The collision jobs for the threads are pre-calculated so there is no overhead of creating them each frame
@@ -90,7 +89,7 @@ private:
 	void primitive_detect_collisions_for_grid_cell(const int grid_cell_id, CollisionVector& collision_vector);
 	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
-	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector, int check_count = -1);
+	void check_collisions_for_body(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector, int check_count = -1);
 
 	// Collision Resolution Functions
 	void resolve_collision_vector_collisions(CollisionVector& collision_vector);

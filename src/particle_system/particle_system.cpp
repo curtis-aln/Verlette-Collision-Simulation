@@ -4,12 +4,12 @@
 
 
 ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds)
-	: window_(window), bounds_(bounds), entities_(ParticleSettings::maximum_particle_count)
+	: window_(window), bounds_(bounds), collision_bodies_(ParticleSettings::maximum_particle_count)
 {
 	init_entities();
 
 	updating_jobs_.reserve(initial_thread_count);
-	active_entities.reserve(entities_.raw_objects_size());
+	active_entities.reserve(collision_bodies_.raw_objects_size());
 
 	init_updating_tp_jobs();
 
@@ -21,7 +21,7 @@ void ParticleManager::init_entities()
 	std::cout << "init entities\n";
 	for (int i = 0; i < ParticleSettings::initial_particle_count; ++i)
 	{
-		Entity* entity = entities_.emplace(true);
+		Entity* entity = collision_bodies_.emplace(true);
 		entity->position_ = Random::rand_pos_in_rect(*bounds_);
 		create_random_entity(entity, entity->position_);
 	}
@@ -117,7 +117,7 @@ void ParticleManager::init_updating_tp_jobs()
 
 	// Collect all active entities first
 	active_entities.clear();
-	for (Entity* e : entities_)
+	for (Entity* e : collision_bodies_)
 		active_entities.push_back(e);
 
 	const sf::Vector2f bounds_pos = bounds_->position;
@@ -216,7 +216,7 @@ void ParticleManager::repel_system_from_point(const sf::Vector2f point, const fl
 {
 	static float rad_sq = radius * radius;
 
-	for (Entity* entity : entities_)
+	for (Entity* entity : collision_bodies_)
 	{
 		sf::Vector2f pos = entity->position_;
 		sf::Vector2f rel = pos - point;
@@ -235,10 +235,10 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 {
 	for (int i = 0; i < amount; ++i)
 	{
-		Entity* entity = entities_.add();
+		Entity* entity = collision_bodies_.add();
 		if (entity == nullptr)
 		{
-			entity = entities_.emplace(true);
+			entity = collision_bodies_.emplace(true);
 		}
 
 		if (entity == nullptr)
@@ -283,7 +283,7 @@ sf::Color ParticleManager::get_rand_white_color()
 
 void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 {
-	const int n = static_cast<int>(entities_.size());
+	const int n = static_cast<int>(collision_bodies_.size());
 	stats.cell_particle_count = n;
 
 	snapshot.toggles = toggles;
@@ -307,7 +307,7 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 
 	for (int i = 0; i < n; ++i)
 	{
-		const Entity* e = entities_.at(i);
+		const Entity* e = collision_bodies_.at(i);
 		pos_dst[i] = e->position_;
 		col_dst[i] = e->color_;
 		rad_dst[i] = e->radius_;

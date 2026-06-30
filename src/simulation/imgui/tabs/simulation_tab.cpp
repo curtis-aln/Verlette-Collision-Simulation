@@ -52,10 +52,10 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
 
     char buf[32];
 
-    std::snprintf(buf, sizeof(buf), "%zu", ResolutionSettings::CellsX);
+    std::snprintf(buf, sizeof(buf), "%zu", ResolutionSettings::cells_x);
     const_row("Grid Cells X", buf);
 
-    std::snprintf(buf, sizeof(buf), "%zu", ResolutionSettings::CellsY);
+    std::snprintf(buf, sizeof(buf), "%zu", ResolutionSettings::cells_y);
     const_row("Grid Cells Y", buf);
 
     std::snprintf(buf, sizeof(buf), "%d", ResolutionSettings::cell_max_capacity);

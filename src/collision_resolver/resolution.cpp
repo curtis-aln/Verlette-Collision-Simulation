@@ -2,26 +2,26 @@
 #include "../utilities/random.h"
 #include <spatial_grid/simple_spatial_grid.h>
 
-thread_local FixedSpan<uint32_t> CollisionResolver::tl_nearby_ids{ nearby_ids_max };
+thread_local FixedSpan<uint32_t> CollisionResolver::tl_nearby_ids_{ nearby_ids_max };
 
 CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities, 
 	unsigned int init_thread_count, unsigned int max_collisions_per_thread, unsigned int max_particles)
 	: 
-	entities_(entities), thread_count(init_thread_count),
-	grid(CellsX, CellsY, cell_max_capacity, bounds->size.x, bounds->size.y),
-	collision_thread_pool_( static_cast<int>(thread_count)),
-	add_to_grid_thread_pool_( static_cast<int>(thread_count))
+	collision_bodies_(entities), thread_count_(init_thread_count),
+	spatial_grid_(cells_x, cells_y, cell_max_capacity, bounds->size.x, bounds->size.y),
+	collision_thread_pool_( static_cast<int>(thread_count_)),
+	add_to_grid_thread_pool_( static_cast<int>(thread_count_))
 {
-    grid.prev_cells.reserve(max_particles);
+    spatial_grid_.prev_cells.reserve(max_particles);
 
 	init_collision_jobs();
-	collision_indexes.resize(thread_count, CollisionVector(max_collisions_per_thread));
+	collision_indexes_.resize(thread_count_, CollisionVector(max_collisions_per_thread));
 
 	collision_thread_pool_.set_jobs(collision_jobs_);  // once
 
     
-    grid.prev_cells.resize(entities_->size());
-    grid.entity_slot.assign(entities_->size(), 0);
+    spatial_grid_.prev_cells.resize(collision_bodies_->size());
+    spatial_grid_.entity_slot.assign(collision_bodies_->size(), 0);
     add_particles_to_grid();
 }
 
@@ -30,7 +30,7 @@ void CollisionResolver::handle_collision_resolutions()
 {
 	//debug_collision_duplicates(); // debugging
 
-	for (CollisionVector& collision_vector : collision_indexes)
+	for (CollisionVector& collision_vector : collision_indexes_)
 	{
 		resolve_collision_vector_collisions(collision_vector);
 	}
@@ -49,11 +49,11 @@ void CollisionResolver::resolve_collision_vector_collisions(CollisionVector& col
 	{
 		if (pair.index_a != cached_id)
 		{
-			particle_a = entities_->at(pair.index_a);
+			particle_a = collision_bodies_->at(pair.index_a);
 			cached_id = pair.index_a;
 		}
 
-		resolve_pair_collision(particle_a, entities_->at(pair.index_b));
+		resolve_pair_collision(particle_a, collision_bodies_->at(pair.index_b));
 	}
 }
 

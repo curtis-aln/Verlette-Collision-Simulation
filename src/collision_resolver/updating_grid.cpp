@@ -4,21 +4,21 @@
 
 void CollisionResolver::add_particles_to_grid()
 {
-    const int n = entities_->size();
+    const int n = collision_bodies_->size();
     const int frame_parity = resolution_frame_ & 1;
 
-    grid.clear();
-    grid.prev_cells.resize(entities_->size());
-    grid.entity_slot.assign(entities_->size(), 0);
+    spatial_grid_.clear();
+    spatial_grid_.prev_cells.resize(collision_bodies_->size());
+    spatial_grid_.entity_slot.assign(collision_bodies_->size(), 0);
 
     int i = 0;
-    for (Entity* entity : *entities_)
+    for (Entity* entity : *collision_bodies_)
     {
         const sf::Vector2f pos = entity->position_;
 
         // only add this particle to the grid if it matches this frame's parity
         //if ((i & 1) == frame_parity)
-        grid.add_object(pos.x, pos.y, i);
+        spatial_grid_.add_object(pos.x, pos.y, i);
 
         ++i;
     }
@@ -26,21 +26,21 @@ void CollisionResolver::add_particles_to_grid()
 
 void CollisionResolver::update_particles_grid_indexes()
 {
-    const int n = static_cast<int>(entities_->size());
+    const int n = static_cast<int>(collision_bodies_->size());
 
     // Precompute to avoid member dereference in loop
-    const uint32_t cap = grid.cell_max_capacity;
-    const float    inv_cw = 1.f / grid.cell_width;
-    const float    inv_ch = 1.f / grid.cell_height;
+    const uint32_t cap = spatial_grid_.cell_max_capacity;
+    const float    inv_cw = 1.f / spatial_grid_.cell_width;
+    const float    inv_ch = 1.f / spatial_grid_.cell_height;
 
-    cell_idx* __restrict prev = grid.prev_cells.data();
-    uint8_t* __restrict slots = grid.entity_slot.data();
-    uint8_t* __restrict counts = grid.cell_capacities.data();
-    obj_idx* __restrict gdata = grid.grid.data();
+    cell_idx* __restrict prev = spatial_grid_.prev_cells.data();
+    uint8_t* __restrict slots = spatial_grid_.entity_slot.data();
+    uint8_t* __restrict counts = spatial_grid_.cell_capacities.data();
+    obj_idx* __restrict gdata = spatial_grid_.grid.data();
 
     for (int obj_id = 0; obj_id < n; ++obj_id)
     {
-        const sf::Vector2f pos = entities_->at(obj_id)->position_;
+        const sf::Vector2f pos = collision_bodies_->at(obj_id)->position_;
 
         const cell_idx new_cell = calcZOrder(
             static_cast<uint16_t>(pos.x * inv_cw),
