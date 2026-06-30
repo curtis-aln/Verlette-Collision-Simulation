@@ -1,5 +1,6 @@
 #include "simulation_tab.h"
 #include "../../../settings.h"
+#include "../../../collision_resolver/collision_resolver.h"
 
 #include <imgui.h>
 #include <cstdio>
@@ -51,13 +52,13 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
 
     char buf[32];
 
-    std::snprintf(buf, sizeof(buf), "%zu", ParticleSettings::CellsX);
+    std::snprintf(buf, sizeof(buf), "%zu", ResolutionSettings::CellsX);
     const_row("Grid Cells X", buf);
 
-    std::snprintf(buf, sizeof(buf), "%zu", ParticleSettings::CellsY);
+    std::snprintf(buf, sizeof(buf), "%zu", ResolutionSettings::CellsY);
     const_row("Grid Cells Y", buf);
 
-    std::snprintf(buf, sizeof(buf), "%d", ParticleSettings::cell_max_capacity);
+    std::snprintf(buf, sizeof(buf), "%d", ResolutionSettings::cell_max_capacity);
     const_row("Cell Capacity", buf);
 
     thin_sep();

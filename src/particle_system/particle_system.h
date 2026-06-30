@@ -23,7 +23,7 @@ class ParticleManager : ParticleSettings
 	sf::RenderWindow* window_;
 	sf::Rect<float>* bounds_;
 
-	CollisionResolver collision_resolver_{ window_, bounds_, &entities_ };
+	CollisionResolver collision_resolver_{ window_, bounds_, &entities_, initial_thread_count, maximum_particle_count / initial_thread_count };
 	SpatialGridRenderer grid_renderer_{ &collision_resolver_.grid };
 	FrameRateSmoothing<30> frame_rate_smoothing_{};
 

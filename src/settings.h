@@ -30,8 +30,7 @@ struct ParticleSettings
 
     inline static constexpr float friction = 0.999995f;
 
-    inline static constexpr float correction_factor = 0.2f;
-    inline static constexpr float restitution = .69f;
+    
 
     inline static unsigned initial_thread_count = 15;
 
@@ -44,9 +43,7 @@ struct ParticleSettings
     inline static const float particle_radius_min = 28.0f;
     inline static const float particle_radius_max = 70.0f;
 
-    inline static uint32_t CellsX = (1u << 10);
-    inline static uint32_t CellsY = CellsX;
-	inline static const uint32_t cell_max_capacity = 6;
+
 
     sf::Color colorActive = { 255, 0, 0 };
     sf::Color colorInctive = { 255, 155, 255 };

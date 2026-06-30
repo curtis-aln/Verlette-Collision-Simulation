@@ -13,7 +13,7 @@ void CollisionResolver::init_collision_jobs()
 
 	// Total logical cells is still CellsX * CellsY, just not contiguous in memory
 	const int total_cells = static_cast<int>(cells_x * cells_y);
-	const int chunk = std::max(1, (total_cells + (int)initial_thread_count - 1) / (int)initial_thread_count);
+	const int chunk = std::max(1, (total_cells + (int)thread_count - 1) / (int)thread_count);
 
 	// Pre-build the Morton index list so threads just index into it
 	std::vector<uint32_t> morton_indices;
@@ -23,7 +23,7 @@ void CollisionResolver::init_collision_jobs()
 			morton_indices.push_back(calcZOrder(static_cast<uint16_t>(cx),
 				static_cast<uint16_t>(cy)));
 
-	for (int t = 0; t < (int)initial_thread_count; ++t)
+	for (int t = 0; t < (int)thread_count; ++t)
 	{
 		const int begin = t * chunk;
 		if (begin >= total_cells) break;

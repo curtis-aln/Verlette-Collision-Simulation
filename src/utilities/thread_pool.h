@@ -23,6 +23,8 @@ class BarrierThreadPool
     std::atomic<bool> stop_{ false };
 
 public:
+    BarrierThreadPool() = default;
+
     explicit BarrierThreadPool(int n)
     {
         workers_.reserve(n);

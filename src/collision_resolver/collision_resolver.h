@@ -13,28 +13,39 @@
 
 #include "collision_vector.h"
 
-inline static const int nearby_ids_max = ParticleSettings::cell_max_capacity * 9;
+struct ResolutionSettings
+{
+	inline static uint32_t CellsX = (1u << 10);
+	inline static uint32_t CellsY = CellsX;
+	inline static const uint32_t cell_max_capacity = 6;
+
+	inline static constexpr float correction_factor = 0.2f;
+	inline static constexpr float restitution = .69f;
+};
 
 
+inline static const int nearby_ids_max = ResolutionSettings::cell_max_capacity * 9;
 
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
-class CollisionResolver : ParticleSettings
+class CollisionResolver : ResolutionSettings
 {
 public:
+	int thread_count{};
+
 	o_vector<Entity>* entities_;
 	sf::RenderWindow* window_;
 	sf::Rect<float>* bounds_;
 
-	SimpleSpatialGrid grid{ CellsX, CellsY, cell_max_capacity, world_width, world_height };
+	SimpleSpatialGrid grid;
 	SpatialGridRenderer grid_renderer_{ &grid };
 
 	FrameRateSmoothing<30> frame_rate_smoothing_{};
 
 	// for multithreadded collision resolution
-	BarrierThreadPool collision_thread_pool_{ static_cast<int>(initial_thread_count) };
+	BarrierThreadPool collision_thread_pool_;
 
-	BarrierThreadPool add_to_grid_thread_pool_{ static_cast<int>(initial_thread_count) };
+	BarrierThreadPool add_to_grid_thread_pool_;
 
 	static thread_local FixedSpan<uint32_t> tl_nearby_ids;
 
@@ -50,7 +61,8 @@ public:
 	int resolution_frame_ = 0;  // toggles 0/1 each frame
 
 public:
-	CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* bounds, o_vector<Entity>* entities);
+	CollisionResolver(sf::RenderWindow* window, sf::Rect<float>* bounds, o_vector<Entity>* entities, 
+		unsigned int init_thread_count, unsigned int max_collisions_per_thread);
 
 	void add_particles_to_grid();
 
@@ -66,6 +78,7 @@ public:
 	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
 	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
 	void update_protozoa_cell(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector, int check_count);
+
 	void handle_collision_resolutions();
 	void resolve_collision_vector_collisions(CollisionVector& collision_vector);
 	void resolve_pair_collision(Entity* particle_a, Entity* particle_b);
