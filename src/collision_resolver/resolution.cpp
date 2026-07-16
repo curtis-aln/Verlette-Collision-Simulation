@@ -2,7 +2,10 @@
 #include "../utilities/random.h"
 #include <spatial_grid/simple_spatial_grid.h>
 
-thread_local FixedSpan<uint32_t> CollisionResolver::tl_nearby_ids_{ nearby_ids_max };
+thread_local FixedSpan<packed_entry> CollisionResolver::tl_packed_entries_{ packed_entries_max };
+
+thread_local FixedSpan<UnpackedEntry> CollisionResolver::tl_unpacked_entries_{ packed_entries_max };
+
 
 CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities, 
 	unsigned int init_thread_count, unsigned int max_collisions_per_thread, unsigned int max_particles)

@@ -16,6 +16,7 @@ Modify the Settings struct to change the grid size, cell capacity, and collision
 
 #include "collision_vector.h" // To know what to resolve
 
+
 struct ResolutionSettings
 {
 	inline static uint32_t cells_x = (1u << 10); // for morton indexing, must be a power of 2
@@ -23,12 +24,12 @@ struct ResolutionSettings
 	inline static const uint32_t cell_max_capacity = 6; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
 
 	inline static constexpr float correction_factor = 0.2f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
-	inline static constexpr float restitution = .69f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
+	inline static constexpr float restitution = .99f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
 };
 
 // The maximum number of nearby particles that can be detected for a given particle, 
 // this is used to allocate the thread local buffer for nearby particles
-inline static const int nearby_ids_max = ResolutionSettings::cell_max_capacity * 9;
+inline static const int packed_entries_max = ResolutionSettings::cell_max_capacity * 9;
 
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
@@ -50,7 +51,9 @@ class CollisionResolver : ResolutionSettings
 	std::vector<std::function<void()>> add_to_grid_jobs_;
 
 	// This is used in the collision detection to collect all the nearby particles for a given cell
-	static thread_local FixedSpan<uint32_t> tl_nearby_ids_;
+	static thread_local FixedSpan<packed_entry> tl_packed_entries_;
+	static thread_local FixedSpan<UnpackedEntry> tl_unpacked_entries_;
+
 
 	// This is used to store the collisions detected by each thread, each thread has its own collision vector to avoid contention
 	std::vector<CollisionVector> collision_indexes_{};
@@ -87,9 +90,9 @@ private:
 	
 	// Collision Detection Functions
 	void primitive_detect_collisions_for_grid_cell(const int grid_cell_id, CollisionVector& collision_vector);
-	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector);
-	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<uint32_t>& nearby_ids);
-	void check_collisions_for_body(const int protozoa_cell_index, const FixedSpan<uint32_t>& nearby_ids, CollisionVector& collision_vector, int check_count = -1);
+	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<packed_entry>& packed_entries, CollisionVector& collision_vector);
+	void update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<packed_entry>& packed_entries);
+	void check_collisions_for_body(const UnpackedEntry& self_entry, const FixedSpan<UnpackedEntry>& packed_entries, CollisionVector& collision_vector, int check_count = -1);
 
 	// Collision Resolution Functions
 	void resolve_collision_vector_collisions(CollisionVector& collision_vector);

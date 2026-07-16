@@ -5,6 +5,14 @@
 #include "fixed_span.h"
 #include <Imgui.h>
 
+// Memory Storage of the spatial hash grid
+// int64
+// First 32 bits go to the particle's absolute index
+// Next  10 bits go to the radius
+// Next 11 bits go to the relative position X
+// Next 11 bits go to the relative position Y
+
+
 // Source - https://stackoverflow.com/a/14853492
 // Posted by aggsol, modified by community. See post 'Timeline' for change history
 // Retrieved 2026-06-28, License - CC BY-SA 4.0
@@ -80,6 +88,19 @@ inline static bool isPow2(uint32_t n) { return n > 0 && (n & (n - 1)) == 0; }
 using cell_idx = uint32_t;
 using obj_idx = uint32_t;
 
+
+using packed_entry = uint64_t;
+struct UnpackedEntry { uint32_t idx; float radius, x, y; };
+
+
+constexpr uint64_t RADIUS_BITS = 10;   // 0..1023
+constexpr uint64_t RELX_BITS = 11;   // 0..2047
+constexpr uint64_t RELY_BITS = 11;   // 0..2047
+
+constexpr uint64_t RADIUS_MASK = (1u << RADIUS_BITS) - 1;
+constexpr uint64_t RELX_MASK = (1u << RELX_BITS) - 1;
+constexpr uint64_t RELY_MASK = (1u << RELY_BITS) - 1;
+
 struct SimpleSpatialGrid
 {
     uint32_t CellsX = 0;
@@ -91,12 +112,21 @@ struct SimpleSpatialGrid
     float world_width = 0;
     float world_height = 0;
 
-    alignas(64) std::vector<obj_idx>  grid{};
-    alignas(64) std::vector<uint8_t>  cell_capacities{};
+    // Cached scales
+    float rscale = 0.f;
+    float xscale = 0.f;
+    float yscale = 0.f;
 
-	// Used to calculate if particles have changed cells since last frames.
+    // Cached inverse scales
+    float inv_rscale = 0.f;
+    float inv_xscale = 0.f;
+    float inv_yscale = 0.f;
+
+    alignas(64) std::vector<packed_entry> grid{};
+    alignas(64) std::vector<uint8_t> cell_capacities{};
+
     std::vector<cell_idx> prev_cells;
-    std::vector<uint8_t>  entity_slot; // which slot within its cell each entity occupies
+    std::vector<uint8_t> entity_slot;
 
 public:
     explicit SimpleSpatialGrid(uint32_t cells_x, uint32_t cells_y, uint32_t cell_capacity,
@@ -127,6 +157,52 @@ public:
     {
         cell_width = world_width / static_cast<float>(CellsX);
         cell_height = world_height / static_cast<float>(CellsY);
+    
+        // Pack scales
+        rscale = float(RADIUS_MASK) / 1023.0f;   // choose your max radius
+        xscale = float(RELX_MASK) / cell_width;
+        yscale = float(RELY_MASK) / cell_height;
+
+        // Unpack scales
+        inv_rscale = 1.0f / rscale;
+        inv_xscale = 1.0f / xscale;
+        inv_yscale = 1.0f / yscale;
+        
+    }
+
+    packed_entry pack_entry(uint32_t idx,
+        float radius,
+        float rel_x,
+        float rel_y) const
+    {
+        const uint64_t r = static_cast<uint64_t>(radius * rscale) & RADIUS_MASK;
+        const uint64_t x = static_cast<uint64_t>(rel_x * xscale) & RELX_MASK;
+        const uint64_t y = static_cast<uint64_t>(rel_y * yscale) & RELY_MASK;
+
+        return (static_cast<uint64_t>(idx) << 32) |
+            (r << 22) |
+            (x << 11) |
+            y;
+    }
+
+    uint32_t unpack_idx(packed_entry e) const
+    {
+        return static_cast<uint32_t>(e >> 32);
+    }
+
+    float unpack_radius(packed_entry e) const
+    {
+        return ((e >> 22) & RADIUS_MASK) * inv_rscale;
+    }
+
+    float unpack_relx(packed_entry e) const
+    {
+        return ((e >> 11) & RELX_MASK) * inv_xscale;
+    }
+
+    float unpack_rely(packed_entry e) const
+    {
+        return (e & RELY_MASK) * inv_yscale;
     }
 
     void change_cell_dimensions(uint32_t new_cells_x, uint32_t new_cells_y)
@@ -141,6 +217,16 @@ public:
         cell_capacities.assign(total, 0);
     }
 
+    UnpackedEntry unpack_nearby(packed_entry e, int32_t offset_x, int32_t offset_y) const
+    {
+        UnpackedEntry out;
+        out.idx = unpack_idx(e);
+        out.radius = unpack_radius(e);
+        out.x = unpack_relx(e) + static_cast<float>(offset_x) * cell_width;
+        out.y = unpack_rely(e) + static_cast<float>(offset_y) * cell_height;
+        return out;
+    }
+
     // --- hash is now Morton order instead of row-major ---
     cell_idx inline hash(const float x, const float y) const
     {
@@ -149,19 +235,32 @@ public:
         return calcZOrder(cell_x, cell_y);
     }
 
-    cell_idx inline add_object(const float x, const float y, const size_t obj_id)
+    cell_idx inline add_object(const float x, const float y, const float radius, const size_t obj_id)
     {
-        const cell_idx index = hash(x, y);
+        const uint32_t cell_x = static_cast<uint32_t>(x / cell_width);
+        const uint32_t cell_y = static_cast<uint32_t>(y / cell_height);
+
+        const cell_idx index = calcZOrder(cell_x, cell_y);
         uint8_t& cap = cell_capacities[index];
 
         if (cap < cell_max_capacity)
         {
             entity_slot[obj_id] = cap;
-            grid[index * cell_max_capacity + cap++] = static_cast<obj_idx>(obj_id);
+
+            // Position relative to the cell
+            const float rel_x = x - (cell_x * cell_width);
+            const float rel_y = y - (cell_y * cell_height);
+
+            // Pack into 64 bits
+            grid[index * cell_max_capacity + cap] =
+                pack_entry(static_cast<uint32_t>(obj_id),
+                    radius,
+                    rel_x,
+                    rel_y);
+            cap++;
         }
 
         prev_cells[obj_id] = index;
-
         return index;
     }
 
@@ -172,12 +271,12 @@ public:
 
     size_t get_total_cells() const { return CellsX * CellsY; }
 
-    void find(const float x, const float y, FixedSpan<obj_idx>* container) const
+    void find(const float x, const float y, FixedSpan<UnpackedEntry>* container) const
     {
         find_from_index(hash(x, y), container);
     }
 
-    void find_from_index(const cell_idx index, FixedSpan<obj_idx>* container) const
+    void find_from_index(const cell_idx index, FixedSpan<UnpackedEntry>* container) const
     {
         container->count = 0;
 
@@ -199,11 +298,13 @@ public:
 
             const cell_idx  neighbour = neighbours[i];
             const uint8_t   count = cell_capacities[neighbour];
-
-            const obj_idx* data = &grid[neighbour * cell_max_capacity];
+            
+            const packed_entry* data = &grid[neighbour * cell_max_capacity];
 
             for (uint8_t j = 0; j < count; ++j)
-                container->add(data[j]);
+            {
+                container->add(unpack_nearby(data[j], nx, ny));
+            }
         }
     }
 

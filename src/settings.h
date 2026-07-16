@@ -10,7 +10,7 @@ struct SimulationSettings
     inline static const unsigned int circleSides = 15;
     inline static const unsigned int deltaGridRate = 1;
 
-    inline static const float maxSpeed = 15.0f;
+    inline static const float maxSpeed = 20.0f;
 
     inline static const float zoomStrength = 1.0f;
 
@@ -18,7 +18,7 @@ struct SimulationSettings
     inline static const float screen_height = 1000.0f;
     inline static const float aspect_ratio = screen_width / screen_height;
 
-    inline static float scale_factor = 260.0f;
+    inline static float scale_factor = 130.0f;
 };
 
 struct ParticleSettings

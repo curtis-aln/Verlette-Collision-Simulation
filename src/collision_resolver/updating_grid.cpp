@@ -18,7 +18,7 @@ void CollisionResolver::add_particles_to_grid()
 
         // only add this particle to the grid if it matches this frame's parity
         //if ((i & 1) == frame_parity)
-        spatial_grid_.add_object(pos.x, pos.y, i);
+        spatial_grid_.add_object(pos.x, pos.y, entity->radius_, i);
 
         ++i;
     }
@@ -36,7 +36,7 @@ void CollisionResolver::update_particles_grid_indexes()
     cell_idx* __restrict prev = spatial_grid_.prev_cells.data();
     uint8_t* __restrict slots = spatial_grid_.entity_slot.data();
     uint8_t* __restrict counts = spatial_grid_.cell_capacities.data();
-    obj_idx* __restrict gdata = spatial_grid_.grid.data();
+    packed_entry* __restrict gdata = spatial_grid_.grid.data();
 
     for (int obj_id = 0; obj_id < n; ++obj_id)
     {
@@ -53,12 +53,12 @@ void CollisionResolver::update_particles_grid_indexes()
         // O(1) remove using slot tracking
         const uint8_t  my_slot = slots[obj_id];
         uint8_t& old_cap = counts[old_cell];
-        obj_idx* old_data = gdata + old_cell * cap;
+        packed_entry* old_data = gdata + old_cell * cap;
 
         --old_cap;
         if (my_slot != old_cap)
         {
-            const obj_idx displaced = old_data[old_cap];
+            const packed_entry displaced = old_data[old_cap];
             old_data[my_slot] = displaced;
             slots[displaced] = my_slot;
         }
@@ -67,7 +67,7 @@ void CollisionResolver::update_particles_grid_indexes()
         uint8_t& new_cap = counts[new_cell];
         if (new_cap < cap)
         {
-            gdata[new_cell * cap + new_cap] = static_cast<obj_idx>(obj_id);
+            gdata[new_cell * cap + new_cap] = static_cast<packed_entry>(obj_id);
             slots[obj_id] = new_cap;
             ++new_cap;
         }

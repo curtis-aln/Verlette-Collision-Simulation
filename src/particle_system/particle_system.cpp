@@ -154,14 +154,13 @@ void ParticleManager::update_particles()
 	stats.iterations_++;
 
 	// Collisions
-	// // 1100fps down to 60fps
-	collision_resolver_.update_particles_grid_indexes();        // Particles get added to the spatial grid
+	collision_resolver_.add_particles_to_grid();        // Particles get added to the spatial grid
 	
 	// 63fps down to 45fps
 	collision_resolver_.run_collision_detection();      // Overlapping particles are added to a container
 	
 	// 45fps down to 42fps
-	collision_resolver_.handle_collision_resolutions(); // Overlapping particles are resolved
+	collision_resolver_.handle_collision_resolutions();  // Overlapping particles are resolved
 
 	// Multithreadding
 	updating_thread_pool_.run_and_wait();
@@ -180,6 +179,8 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	pos += vel;
 	vel *= friction;
 	//velocity_ += sf::Vector2f(0, 0.01f); // gravity
+	float r = .34f;
+	vel += Random::rand_vector(-r, r); // random jitter)
 
 	// Boundary Check
 	const float buffer = entity->radius_;
