@@ -1,19 +1,22 @@
 #pragma once
 
+#include "../settings.h"
+#include "../spatial_grid/spatial_grid_renderer.h"
 #include "../utilities/o_vector.hpp"
 #include "particle.h"
-#include "../settings.h"
-#include "../rendering/PPS_renderer.h"
-#include "../spatial_grid/simple_spatial_grid.h"
-#include "../spatial_grid/spatial_grid_renderer.h"
 
 #include "../collision_resolver/collision_resolver.h"
 
-#include "state.h"
 #include "../utilities/smooth_frame_rates.h"
 #include "../utilities/thread_pool.h"
+#include "state.h"
 #include <functional>
-#include <set>
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Rect.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/System/Vector2.hpp>
+#include <simulation/context/sim_snapshot.h>
+#include <vector>
 
 
 // This class is resonsible for the updating and rendering of the particles in the simulation
@@ -23,9 +26,9 @@ class ParticleManager : ParticleSettings
 	sf::RenderWindow* window_;
 	sf::Rect<float>* bounds_;
 
-	CollisionResolver collision_resolver_{ bounds_, &collision_bodies_, initial_thread_count, 
+	CollisionResolver collision_resolver_{ bounds_, &collision_bodies_, initial_thread_count,
 		maximum_particle_count, maximum_particle_count };
-	SpatialGridRenderer grid_renderer_{ collision_resolver_.get_grid()};
+	SpatialGridRenderer grid_renderer_{ collision_resolver_.get_grid() };
 	FrameRateSmoothing<30> frame_rate_smoothing_{};
 
 	// This threadpool is responsible for updating the particles in the simulation
@@ -48,7 +51,8 @@ public:
 	sf::Color shift_hue(const sf::Color& color, const float degrees);
 
 
-	sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float speed, const float max_speed);
+
+	sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float mass, const float speed, const float max_speed);
 
 	void init_updating_tp_jobs();
 

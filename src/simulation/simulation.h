@@ -1,24 +1,33 @@
 #pragma once
-#include <SFML/Graphics.hpp>
-#include <imgui-SFML.h>
 
 #include "../settings.h"
-#include "../particle_system/particle.h"
-#include "../spatial_grid/simple_spatial_grid.h"
 
-#include "../utilities/random.h"
 #include "../utilities/camera.h"
 #include "../utilities/smooth_frame_rates.h"
 #include "../utilities/stopwatch.h"
 
 #include "../particle_system/particle_system.h"
+#include "../rendering/PPS_renderer.h"
+#include "context/triple_buffer.h"
+#include "imgui/control_panel.h"
+
+#include <atomic>
+#include <mutex>
+#include <queue>
+#include <SFML/Graphics/Rect.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/VertexArray.hpp>
+#include <SFML/System/Vector2.hpp>
+#include <SFML/Window/Event.hpp>
+#include <SFML/Window/Keyboard.hpp>
+#include <SFML/Window/VideoMode.hpp>
+#include <SFML/Window/WindowEnums.hpp>
+#include <string>
+#include <thread>
 
 #include "context/sim_command.h"
 #include "context/sim_snapshot.h"
-#include "context/triple_buffer.h"
 
-#include "imgui/control_panel.h"
-#include <functional>
 
 inline static constexpr int frame_smoothing_count = 30;
 inline static const std::string title = "Spatial Hash Grid";
@@ -34,14 +43,14 @@ class Simulation : SimulationSettings
 	unsigned long long frameCount = 0;
 	sf::Vector2f mousePosition{};
 
-	sf::Rect<float> border{ {0.0f, 0.0f}, {ParticleSettings::world_width, ParticleSettings::world_height} };
+	sf::Rect<float> border{ { 0.0f, 0.0f },{ ParticleSettings::world_width, ParticleSettings::world_height } };
 
 	ParticleManager particleManager{ &window, &border };
 	PPS_Renderer renderer{ &window };
 
 
 	sf::VertexArray v_array{};
-	
+
 	FrameRateSmoothing<frame_smoothing_count> clock_{};
 	Camera camera{ &window, 1.f / scale_factor };
 

@@ -35,7 +35,7 @@ void CollisionResolver::detect_collisions_for_grid_cell(const int grid_cell_id, 
 	// This function handles all the collision detection for a grid cell, it is far more computationally efficient
 	// to collect all the particles around and in this cell into packed entries and then for each particle in this cell, check for collisions
 	// than it is to go over each particle and re-calculate its nearby neighbours
-
+	return;
 		if (spatial_grid_.cell_capacities[grid_cell_id] == 0)
 			return;
 

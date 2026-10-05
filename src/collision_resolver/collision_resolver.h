@@ -1,20 +1,23 @@
 #pragma once
 
 /* Collision Resolver Class
-This class handles collision detection and resolution between particles in a 2D simulation. 
+This class handles collision detection and resolution between particles in a 2D simulation.
 It uses a spatial grid to efficiently detect potential collisions and resolves them based on their positions and velocities.
 Modify the Settings struct to change the grid size, cell capacity, and collision resolution parameters.
 */
 
-#include "../utilities/o_vector.hpp" // Containing the particles
 #include "../particle_system/particle.h" // The particle class Themselves
 #include "../spatial_grid/simple_spatial_grid.h" // Collision Detection
+#include "../utilities/o_vector.hpp" // Containing the particles
 #include "../utilities/thread_pool.h" // Multithreadding
 
 #include <functional>
-#include <set>
-
+#
 #include "collision_vector.h" // To know what to resolve
+#include <cstdint>
+#include <SFML/Graphics/Rect.hpp>
+#include <spatial_grid/fixed_span.h>
+#include <vector>
 
 
 struct ResolutionSettings
@@ -25,6 +28,9 @@ struct ResolutionSettings
 
 	inline static constexpr float correction_factor = 0.2f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
 	inline static constexpr float restitution = .99f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
+
+	inline static constexpr float density = 100.f;
+
 };
 
 // The maximum number of nearby particles that can be detected for a given particle, 
@@ -62,7 +68,7 @@ class CollisionResolver : ResolutionSettings
 	int resolution_frame_ = 0;  // toggles 0/1 each frame
 
 public:
-	CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities, 
+	CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities,
 		unsigned int init_thread_count, unsigned int max_collisions_per_thread, unsigned int max_particles);
 
 	// This function goes through each cell and updates their position in the grid rather than clearing the grid and re-adding all particles, this is more efficient
@@ -87,7 +93,7 @@ public:
 private:
 	// The collision jobs for the threads are pre-calculated so there is no overhead of creating them each frame
 	void init_collision_jobs();
-	
+
 	// Collision Detection Functions
 	void primitive_detect_collisions_for_grid_cell(const int grid_cell_id, CollisionVector& collision_vector);
 	void detect_collisions_for_grid_cell(const int grid_cell_id, FixedSpan<packed_entry>& packed_entries, CollisionVector& collision_vector);

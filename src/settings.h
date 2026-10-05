@@ -1,50 +1,48 @@
 #pragma once
-#include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Color.hpp>
 
 struct SimulationSettings
 {
-    inline static const sf::Color bg_color = { 0, 0, 40 };
+	inline static const sf::Color bg_color = { 0, 0, 40 };
 
-    inline static const unsigned int vertexReserve = 100;
+	inline static const unsigned int vertexReserve = 100;
 
-    inline static const unsigned int circleSides = 15;
-    inline static const unsigned int deltaGridRate = 1;
+	inline static const unsigned int circleSides = 22;
+	inline static const unsigned int deltaGridRate = 1;
 
-    inline static const float maxSpeed = 20.0f;
+	inline static const float maxSpeed = 20.0f;
 
-    inline static const float zoomStrength = 1.0f;
+	inline static const float zoomStrength = 1.0f;
 
-    inline static const float screen_width = 1900.0f;
-    inline static const float screen_height = 1000.0f;
-    inline static const float aspect_ratio = screen_width / screen_height;
+	inline static const float screen_width = 1900.0f;
+	inline static const float screen_height = 1000.0f;
+	inline static const float aspect_ratio = screen_width / screen_height;
 
-    inline static float scale_factor = 130.0f;
+	inline static float scale_factor = 130.0f;
 };
 
 struct ParticleSettings
 {
-    inline static const sf::Color color_rest = { 30, 60, 200 };
-    inline static const sf::Color color_max = { 255, 100, 0 };
-    inline static const float hue_shift_range = 40;
-    inline static const float init_velocity_range = 10.f;
+	inline static const sf::Color color_rest = { 30, 60, 200 };
+	inline static const sf::Color color_max = { 255, 100, 0 };
+	inline static const float hue_shift_range = 40;
+	inline static const float init_velocity_range = 10.f;
 
-    inline static constexpr float friction = 0.999995f;
+	inline static constexpr float friction = 0.99995f;
 
-    
+	inline static unsigned initial_thread_count = 15;
 
-    inline static unsigned initial_thread_count = 15;
+	inline static const unsigned int initial_particle_count = 300'000;
+	inline static const unsigned int maximum_particle_count = 500'000;
 
-    inline static const unsigned int initial_particle_count = 1'000'000;
-    inline static const unsigned int maximum_particle_count = 1'000'000;
+	inline static const float world_width = SimulationSettings::screen_height * SimulationSettings::scale_factor;
+	inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
 
-    inline static const float world_width = SimulationSettings::screen_height * SimulationSettings::scale_factor;
-    inline static const float world_height = SimulationSettings::screen_height * SimulationSettings::scale_factor;
-
-    inline static const float particle_radius_min = 28.0f;
-    inline static const float particle_radius_max = 70.0f;
+	inline static const float particle_radius_min = 20.0f;
+	inline static const float particle_radius_max = 110.0f;
 
 
 
-    sf::Color colorActive = { 255, 0, 0 };
-    sf::Color colorInctive = { 255, 155, 255 };
+	sf::Color colorActive = { 255, 0, 0 };
+	sf::Color colorInctive = { 255, 155, 255 };
 };

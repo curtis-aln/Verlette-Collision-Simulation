@@ -1,6 +1,17 @@
-#include "particle_system.h"
 #include "../utilities/random.h"
-#include <spatial_grid/simple_spatial_grid.h>
+#include "particle.h"
+#include "particle_system.h"
+#include <algorithm>
+#include <cmath>
+#include <collision_resolver/collision_resolver.h>
+#include <cstdint>
+#include <iostream>
+#include <settings.h>
+#include <SFML/Graphics/Color.hpp>
+#include <SFML/Graphics/Rect.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/System/Vector2.hpp>
+#include <simulation/context/sim_snapshot.h>
 
 
 ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds)
@@ -91,12 +102,16 @@ sf::Color ParticleManager::shift_hue(const sf::Color& color, const float degrees
 }
 
 sf::Color ParticleManager::velocity_to_color(const sf::Color rest, const sf::Color max_color,
-	const float speed_sq, const float max_speed_sq)
+	const float mass, const float speed_sq, const float max_kinetic_energy)
 {
-	// No sqrt — work in squared space entirely
-	const float t = speed_sq >= max_speed_sq ? 1.f : speed_sq * (1.f / max_speed_sq);
+	// KE = 1/2 * m * v^2, still no sqrt needed
+	const float kinetic_energy = 0.5f * mass * speed_sq;
 
-	// Pack both colors into uint32 and do the lerp with integer math
+	// Guard against a zero/negative max, and clamp t to [0, 1]
+	const float t = max_kinetic_energy > 0.f
+		? std::clamp(kinetic_energy / max_kinetic_energy, 0.f, 1.f)
+		: 0.f;
+
 	const int dr = max_color.r - rest.r;
 	const int dg = max_color.g - rest.g;
 	const int db = max_color.b - rest.b;
@@ -155,10 +170,10 @@ void ParticleManager::update_particles()
 
 	// Collisions
 	collision_resolver_.add_particles_to_grid();        // Particles get added to the spatial grid
-	
+
 	// 63fps down to 45fps
 	collision_resolver_.run_collision_detection();      // Overlapping particles are added to a container
-	
+
 	// 45fps down to 42fps
 	collision_resolver_.handle_collision_resolutions();  // Overlapping particles are resolved
 
@@ -199,7 +214,10 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	pos.y = std::clamp(pos.y, y_min, y_max);
 
 	static const float max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
-	entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, vel.lengthSquared(), max_speed_sq);
+	const float max_mass = ParticleSettings::particle_radius_max * ParticleSettings::particle_radius_max * ResolutionSettings::density; // approximate mass with max radius
+	const float mass = entity->radius_ * entity->radius_ * ResolutionSettings::density; // approximate mass with radius
+	const float max_kinetic_energy = 0.5f * max_mass * max_speed_sq; // approximate mass with max radius
+	entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, vel.lengthSquared(), mass, max_kinetic_energy);
 
 	// Write back
 	entity->position_ = pos;

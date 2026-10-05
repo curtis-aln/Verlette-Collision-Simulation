@@ -1,31 +1,36 @@
 #include "collision_resolver.h"
-#include "../utilities/random.h"
+#include "collision_vector.h"
+#include <particle_system/particle.h>
+#include <SFML/Graphics/Rect.hpp>
+#include <SFML/System/Vector2.hpp>
+#include <spatial_grid/fixed_span.h>
 #include <spatial_grid/simple_spatial_grid.h>
+#include <utilities/o_vector.hpp>
 
 thread_local FixedSpan<packed_entry> CollisionResolver::tl_packed_entries_{ packed_entries_max };
 
 thread_local FixedSpan<UnpackedEntry> CollisionResolver::tl_unpacked_entries_{ packed_entries_max };
 
 
-CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities, 
+CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities,
 	unsigned int init_thread_count, unsigned int max_collisions_per_thread, unsigned int max_particles)
-	: 
+	:
 	collision_bodies_(entities), thread_count_(init_thread_count),
 	spatial_grid_(cells_x, cells_y, cell_max_capacity, bounds->size.x, bounds->size.y),
-	collision_thread_pool_( static_cast<int>(thread_count_)),
-	add_to_grid_thread_pool_( static_cast<int>(thread_count_))
+	collision_thread_pool_(static_cast<int>(thread_count_)),
+	add_to_grid_thread_pool_(static_cast<int>(thread_count_))
 {
-    spatial_grid_.prev_cells.reserve(max_particles);
+	spatial_grid_.prev_cells.reserve(max_particles);
 
 	init_collision_jobs();
 	collision_indexes_.resize(thread_count_, CollisionVector(max_collisions_per_thread));
 
 	collision_thread_pool_.set_jobs(collision_jobs_);  // once
 
-    
-    spatial_grid_.prev_cells.resize(collision_bodies_->size());
-    spatial_grid_.entity_slot.assign(collision_bodies_->size(), 0);
-    add_particles_to_grid();
+
+	spatial_grid_.prev_cells.resize(collision_bodies_->size());
+	spatial_grid_.entity_slot.assign(collision_bodies_->size(), 0);
+	add_particles_to_grid();
 }
 
 
@@ -85,9 +90,8 @@ void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* parti
 	sf::Vector2f vel_a = particle_a->velocity_;
 	sf::Vector2f vel_b = particle_b->velocity_;
 
-	float mass_a = rad_a; // Todo - dynamic mass
-	float mass_b = rad_b;
-
+	float mass_a = rad_a * rad_a * density;
+	float mass_b = rad_b * rad_b * density;
 
 
 	// Each particle gets a share weighted by the *other* particle's mass fraction
