@@ -5,6 +5,7 @@
 
 #include "control_panel.h"
 
+#include "tabs/controls_tab.h"
 #include "tabs/simulation_tab.h"
 
 #include <imgui.h>
@@ -15,6 +16,7 @@
 ControlPanel::ControlPanel()
 {
 	m_tabs_.push_back(std::make_unique<SimulationTab>());
+	m_tabs_.push_back(std::make_unique<ControlsTab>());
 }
 
 void ControlPanel::draw(const SimSnapshot& snap, SimCtx& ctx, float dt)
