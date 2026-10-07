@@ -32,7 +32,7 @@ struct ParticleSettings
 
 	inline static unsigned initial_thread_count = 15;
 
-	inline static const unsigned int initial_particle_count = 300'000;
+	inline static const unsigned int initial_particle_count = 200'000;
 	inline static const unsigned int maximum_particle_count = 500'000;
 
 	inline static const float world_width = SimulationSettings::screen_height * SimulationSettings::scale_factor;

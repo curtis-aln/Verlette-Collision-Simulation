@@ -27,7 +27,7 @@ struct ResolutionSettings
 	inline static const uint32_t cell_max_capacity = 6; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
 
 	inline static constexpr float correction_factor = 0.2f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
-	inline static constexpr float restitution = .99f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
+	inline static constexpr float restitution = .9f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
 
 	inline static constexpr float density = 100.f;
 

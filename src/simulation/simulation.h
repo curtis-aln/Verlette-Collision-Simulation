@@ -37,7 +37,7 @@ class Simulation : SimulationSettings
 	sf::Vector2u size = { static_cast<unsigned int>(screen_width), static_cast<unsigned int>(screen_height) };
 	sf::RenderWindow window{ sf::VideoMode(size), title, sf::Style::None };
 
-	bool paused = false;
+	std::atomic<bool> paused{ false };   // was: bool paused = false;
 	bool draw_grid = false;
 	bool mousePressed = false;
 	unsigned long long frameCount = 0;
@@ -83,6 +83,7 @@ private:
 
 	void setCaption();
 	void handle_events();
+	void push_command(SimCommand cmd);
 	void resolve_modifications();
 	void dispatch_event(const sf::Event& event, const sf::Vector2f& cam_pos);
 	void handle_pause_toggle();

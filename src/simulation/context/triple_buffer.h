@@ -1,97 +1,85 @@
 #pragma once
 #include <atomic>
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Lock-free triple buffer (single producer, single consumer).
+//
+//  Three slots, each owned by exactly one party at any moment:
+//    m_write  — owned by the update thread (only it touches this index)
+//    m_read   — owned by the render thread (only it touches this index)
+//    m_middle — the hand-off slot; low 2 bits = slot index, bit 2 = "dirty"
+//               (holds a frame the renderer has not picked up yet)
+//
+//  Both sides swap with the middle slot using one atomic exchange, so there is
+//  no window in which both threads can believe they own the same slot.
+//
+//  Requirements on T: default constructible, move assignable.
+// ─────────────────────────────────────────────────────────────────────────────
 template<typename T>
 class TripleBuffer
 {
 public:
-    explicit TripleBuffer(int cell_render_reserve)
-        : m_latest_ready(-1)
-        , m_render_idx(-1)
-        , m_write_idx(0)
-    {
-        for (int i = 0; i < 3; ++i)
-        {
-            new (&m_buffers[i]) T(cell_render_reserve);
-        }
-    }
+	explicit TripleBuffer(int cell_render_reserve)
+	{
+		// Slots are already default-constructed by the array member.
+		// Assign (not placement-new) so each object is constructed and
+		// destroyed exactly once.
+		for (T& b : m_buffers)
+			b = T(cell_render_reserve);
+	}
 
-    ~TripleBuffer()
-    {
-        for (int i = 0; i < 3; ++i)
-        {
-            reinterpret_cast<T*>(&m_buffers[i])->~T();
-        }
-    }
+	// ── Update thread ─────────────────────────────────────────────────────
 
-    // ── Update thread ─────────────────────────────────────────────────────
+	// Buffer to write the next frame into.
+	T& get_write_buffer()
+	{
+		return m_buffers[m_write];
+	}
 
-    // Get a reference to write the next frame into.
-    T& get_write_buffer()
-    {
-        return m_buffers[m_write_idx];
-    }
+	// Hand the finished frame to the renderer and take back whichever slot
+	// was sitting in the middle as the new write buffer.
+	void publish()
+	{
+		m_write = m_middle.exchange(m_write | kDirty, std::memory_order_acq_rel)
+			& kIndexMask;
+		m_published.store(true, std::memory_order_release);
+	}
 
-    // Call when done writing. Makes this frame available to the renderer
-    // and finds the next buffer to write into.
-    void publish()
-    {
-        // Atomically publish the buffer we just finished writing.
-        // "release" ensures the buffer contents are visible before the index.
-        const int old_ready = m_latest_ready.exchange(m_write_idx,
-            std::memory_order_release);
+	// ── Render thread ─────────────────────────────────────────────────────
 
-        // old_ready is now free (renderer has its own copy of render_idx).
-        // Find the new write buffer: anything that isn't latest_ready or render_idx.
-        const int render = m_render_idx.load(std::memory_order_relaxed);
-        const int ready = m_write_idx; // what we just published
+	// True if the update thread has published a frame we haven't read yet.
+	bool has_new_frame() const
+	{
+		return (m_middle.load(std::memory_order_acquire) & kDirty) != 0;
+	}
 
-        for (int i = 0; i < 3; ++i)
-        {
-            if (i != ready && i != render)
-            {
-                m_write_idx = i;
-                break;
-            }
-        }
-    }
+	// True once the first frame has been published. Check this before
+	// begin_read() so you never render a default-constructed buffer.
+	bool has_published() const
+	{
+		return m_published.load(std::memory_order_acquire);
+	}
 
-    // ── Render thread ─────────────────────────────────────────────────────
+	// Swap to the newest frame if there is one; otherwise keep the old one.
+	const T& begin_read()
+	{
+		if (m_middle.load(std::memory_order_acquire) & kDirty)
+		{
+			m_read = m_middle.exchange(m_read, std::memory_order_acq_rel)
+				& kIndexMask;
+		}
+		return m_buffers[m_read];
+	}
 
-    // Returns true if a new frame is available since the last call to
-    // begin_read(). Call this before begin_read() to avoid unnecessary swaps.
-    bool has_new_frame() const
-    {
-        const int ready = m_latest_ready.load(std::memory_order_relaxed);
-        return ready != -1 && ready != m_render_idx.load(std::memory_order_relaxed);
-    }
-
-    // Swap to the latest ready frame if one exists.
-    // Returns the buffer to render. Always valid after first publish().
-    const T& begin_read()
-    {
-        const int ready = m_latest_ready.load(std::memory_order_acquire);
-        if (ready != -1)
-            m_render_idx.store(ready, std::memory_order_relaxed);
-
-        return m_buffers[m_render_idx.load(std::memory_order_relaxed)];
-    }
-
-    bool has_published() const {
-        return m_latest_ready.load(std::memory_order_relaxed) != -1;
-    }
-
-    // Call when done rendering this frame.
-    void end_read()
-    {
-        // Nothing strictly needed here in this design,
-        // but having the call site keeps the API symmetric and
-        // gives you a place to add metrics later.
-    }
+	void end_read() {}
 
 private:
-    T          m_buffers[3];
-    std::atomic<int> m_latest_ready;  // written by update, read by render
-    std::atomic<int> m_render_idx;    // written by render, read by update
-    int              m_write_idx;     // only ever touched by update thread
+	static constexpr int kDirty = 4;
+	static constexpr int kIndexMask = 3;
+
+	T                m_buffers[3];
+	int              m_write = 0;            // update thread only
+	int              m_read = 1;             // render thread only
+	std::atomic<int> m_middle{ 2 };          // shared hand-off slot (clean)
+	std::atomic<bool> m_published{ false };
 };
