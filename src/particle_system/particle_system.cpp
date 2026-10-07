@@ -129,6 +129,8 @@ void ParticleManager::init_updating_tp_jobs()
 {
 	// This funciton should be called every time a particle is added or removed from the system, 
 	// to ensure that the thread pool has the correct number of jobs to process
+	updating_jobs_.clear();
+
 
 	// Collect all active entities first
 	active_entities.clear();
@@ -195,7 +197,7 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	vel *= friction;
 
 	// attraction to the center of the world using the gravity equation
-	const float G = 180000.f; // gravitational constant
+	const float G = 1280000.f; // gravitational constant
 	const sf::Vector2f center = bounds_pos + bounds_size * 0.5f;
 	constexpr float softening_sq = 250.f * 250.f;  // (5 px)^2, tune to taste
 
@@ -207,8 +209,8 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	vel += to_center * (G * inv_d * inv_d * inv_d);
 
 
-	//vel += sf::Vector2f(0, 0.01f); // gravity
-	float r = .34f;
+	vel += sf::Vector2f(0, 0.04f); // gravity
+	//float r = .2f;
 	//vel += Random::rand_vector(-r, r); // random jitter)
 
 	// Boundary Check
@@ -219,9 +221,16 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	const float x_max = bounds_pos.x + bounds_size.x - buffer;
 	const float y_max = bounds_pos.y + bounds_size.y - buffer;
 
-	// Branchless velocity flip — no branch misprediction
-	vel.x *= 1.f - 2.f * (pos.x < x_min || pos.x > x_max);
-	vel.y *= 1.f - 2.f * (pos.y < y_min || pos.y > y_max);
+	if ((pos.x < x_min && vel.x < 0.f) || (pos.x > x_max && vel.x > 0.f))
+	{
+		vel.x = -vel.x;
+		vel.x *= ResolutionSettings::restitution; // apply restitution to the velocity when bouncing off the wall
+	}
+	if ((pos.y < y_min && vel.y < 0.f) || (pos.y > y_max && vel.y > 0.f))
+	{
+		vel.y = -vel.y;
+		vel.y *= ResolutionSettings::restitution; // apply restitution to the velocity when bouncing off the wall
+	}
 
 	// Clamp position
 	pos.x = std::clamp(pos.x, x_min, x_max);
@@ -281,9 +290,9 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 		}
 
 		create_random_entity(entity, point + Random::rand_vector(-radius, radius));
-
-		collision_resolver_.add_particles_to_grid();
 	}
+
+	collision_resolver_.add_particles_to_grid();
 
 	init_updating_tp_jobs();
 }

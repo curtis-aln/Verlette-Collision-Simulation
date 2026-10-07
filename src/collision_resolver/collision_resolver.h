@@ -22,14 +22,14 @@ Modify the Settings struct to change the grid size, cell capacity, and collision
 
 struct ResolutionSettings
 {
-	inline static uint32_t cells_x = (1u << 10); // for morton indexing, must be a power of 2
+	inline static uint32_t cells_x = (1u << 9); // for morton indexing, must be a power of 2
 	inline static uint32_t cells_y = cells_x;     // square worlds
-	inline static const uint32_t cell_max_capacity = 6; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
+	inline static const uint32_t cell_max_capacity = 12; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
 
-	inline static constexpr float correction_factor = 0.2f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
-	inline static constexpr float restitution = .9f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
+	inline static float correction_factor = 0.3f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
+	inline static float restitution = .997f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
 
-	inline static constexpr float density = 100.f;
+	inline static float density = 100.f;
 
 };
 

@@ -14,6 +14,7 @@
 #include "context/sim_snapshot.h"
 #include "imgui.h"
 #include "imgui-SFML.h"
+#include <collision_resolver/collision_resolver.h>
 #include <ios>
 #include <mutex>
 #include <queue>
@@ -257,6 +258,18 @@ void Simulation::resolve_modifications()
 
 		case CommandType::SetThreadCount:
 			//particle_system_.set_thread_count(cmd.int_val);
+			break;
+
+		case CommandType::SetRestitution:
+			ResolutionSettings::restitution = cmd.float_val;
+			break;
+
+		case CommandType::SetCorrectionFactor:
+			ResolutionSettings::correction_factor = cmd.float_val;
+			break;
+
+		case CommandType::SetDensity:
+			ResolutionSettings::density = cmd.float_val;
 			break;
 
 		default:

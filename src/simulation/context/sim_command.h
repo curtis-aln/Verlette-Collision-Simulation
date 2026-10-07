@@ -20,9 +20,9 @@ enum class CommandType
 	RepelFromPoint,         // x, y = world pos, float_val = magnitude, radius
 
 	// ── Physics ───────────────────────────────────────────────────────────
-	SetAlpha,
-	SetBeta,
-	SetGamma,
+	SetRestitution,
+	SetCorrectionFactor,
+	SetDensity,
 
 	// Density grid
 	SetDensityCellSize,

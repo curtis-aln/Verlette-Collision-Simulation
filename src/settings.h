@@ -18,7 +18,7 @@ struct SimulationSettings
 	inline static const float screen_height = 1000.0f;
 	inline static const float aspect_ratio = screen_width / screen_height;
 
-	inline static float scale_factor = 130.0f;
+	inline static float scale_factor = 100.0f;
 };
 
 struct ParticleSettings

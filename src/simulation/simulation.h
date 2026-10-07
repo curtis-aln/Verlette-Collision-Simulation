@@ -7,9 +7,9 @@
 #include "../utilities/stopwatch.h"
 
 #include "../particle_system/particle_system.h"
-#include "../rendering/PPS_renderer.h"
 #include "context/triple_buffer.h"
 #include "imgui/control_panel.h"
+#include "rendering/PPS_renderer.h"
 
 #include <atomic>
 #include <mutex>
