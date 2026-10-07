@@ -18,4 +18,8 @@ private:
 	float restitution = ResolutionSettings::restitution;
 	float correction_factor = ResolutionSettings::correction_factor;
 	float density = ResolutionSettings::density;
+
+	float surface_gravity_const = ParticleSettings::surface_gravity_const;
+	float central_gravity_const = ParticleSettings::central_gravity_const;
+	float random_jitter_const = ParticleSettings::random_jitter_const;
 };

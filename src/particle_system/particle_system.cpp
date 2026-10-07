@@ -197,21 +197,28 @@ void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds
 	vel *= friction;
 
 	// attraction to the center of the world using the gravity equation
-	const float G = 1280000.f; // gravitational constant
-	const sf::Vector2f center = bounds_pos + bounds_size * 0.5f;
-	constexpr float softening_sq = 250.f * 250.f;  // (5 px)^2, tune to taste
+	if (toggles.central_gravity)
+	{
+		const sf::Vector2f center = bounds_pos + bounds_size * 0.5f;
+		constexpr float softening_sq = 250.f * 250.f;  // (5 px)^2, tune to taste
 
-	const sf::Vector2f to_center = center - pos;
-	const float d2 = to_center.lengthSquared() + softening_sq;
-	const float inv_d = 1.f / std::sqrt(d2);
+		const sf::Vector2f to_center = center - pos;
+		const float d2 = to_center.lengthSquared() + softening_sq;
+		const float inv_d = 1.f / std::sqrt(d2);
 
-	// a = G * r_vec / (r^2 + eps^2)^(3/2)
-	vel += to_center * (G * inv_d * inv_d * inv_d);
+		// a = G * r_vec / (r^2 + eps^2)^(3/2)
+		vel += to_center * (central_gravity_const * inv_d * inv_d * inv_d);
+	}
 
+	if (toggles.surface_gravity)
+	{
+		vel += sf::Vector2f(0, surface_gravity_const); // gravity
+	}
 
-	vel += sf::Vector2f(0, 0.04f); // gravity
-	//float r = .2f;
-	//vel += Random::rand_vector(-r, r); // random jitter)
+	if (toggles.random_jitter)
+	{
+		vel += Random::rand_vector(-random_jitter_const, random_jitter_const); // random jitter
+	}
 
 	// Boundary Check
 	const float buffer = entity->radius_;

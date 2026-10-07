@@ -18,6 +18,7 @@
 #include <ios>
 #include <mutex>
 #include <queue>
+#include <settings.h>
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Event.hpp>
 #include <SFML/Window/Keyboard.hpp>
@@ -271,6 +272,19 @@ void Simulation::resolve_modifications()
 		case CommandType::SetDensity:
 			ResolutionSettings::density = cmd.float_val;
 			break;
+
+		case CommandType::SetSurfaceGravity:
+			ParticleSettings::surface_gravity_const = cmd.float_val;
+			break;
+
+		case CommandType::SetCentralGravity:
+			ParticleSettings::central_gravity_const = cmd.float_val;
+			break;
+
+		case CommandType::SetRandomJitter:
+			ParticleSettings::random_jitter_const = cmd.float_val;
+			break;
+
 
 		default:
 			break;

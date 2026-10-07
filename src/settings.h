@@ -41,6 +41,9 @@ struct ParticleSettings
 	inline static const float particle_radius_min = 20.0f;
 	inline static const float particle_radius_max = 110.0f;
 
+	inline static float central_gravity_const = 1280000.f; // gravitational constant
+	inline static float surface_gravity_const = 0.04f; // surface gravity constant
+	inline static float random_jitter_const = 0.3f; // random jitter constant
 
 
 	sf::Color colorActive = { 255, 0, 0 };

@@ -4,6 +4,7 @@
 
 #include <cstdio>
 #include <imgui.h>
+#include <particle_system/state.h>
 #include <simulation/context/sim_command.h>
 #include <simulation/context/sim_snapshot.h>
 
@@ -92,6 +93,24 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
 
 	if (ImGui::SliderFloat("##density", &density, 1.f, 1000.f, "Density: %.1f"))
 		ctx.push({ CommandType::SetDensity,{}, density, 0 });
+
+	// ══ ENVIRONMENT SETTINGS ══════════════════════════════════════════════════════
+	section_header("ENVIRONMENT SETTINGS");
+	toggle(ctx, "Surface Gravity", &WorldToggles::surface_gravity);
+	if (ctx.toggles.surface_gravity) // inline slider to control strength of surface gravity
+		if (ImGui::SliderFloat("##surface_gravity_strength", &surface_gravity_const, 0.f, 0.5f, "Surface Gravity Strength: %.3f"))
+			ctx.push({ CommandType::SetSurfaceGravity,{}, surface_gravity_const, 0 });
+
+	toggle(ctx, "Central Gravity", &WorldToggles::central_gravity);
+	if (ctx.toggles.central_gravity) // inline slider to control strength of central gravity
+		if (ImGui::SliderFloat("##central_gravity_strength", &central_gravity_const, 0.f, 10000000.f, "Central Gravity Strength: %.3f"))
+			ctx.push({ CommandType::SetCentralGravity,{}, central_gravity_const, 0 });
+
+	toggle(ctx, "Random Jitter", &WorldToggles::random_jitter);
+	if (ctx.toggles.random_jitter) // inline slider to control strength of random jitter
+		if (ImGui::SliderFloat("##random_jitter_strength", &random_jitter_const, 0.f, 5.f, "Random Jitter Strength: %.3f"))
+			ctx.push({ CommandType::SetRandomJitter,{}, random_jitter_const, 0 });
+
 
 	// ══ LIVE PERFORMANCE ══════════════════════════════════════════════════════
 	section_header("PERFORMANCE");

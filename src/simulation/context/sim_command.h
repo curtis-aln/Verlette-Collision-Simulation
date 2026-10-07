@@ -24,6 +24,10 @@ enum class CommandType
 	SetCorrectionFactor,
 	SetDensity,
 
+	SetSurfaceGravity,
+	SetCentralGravity,
+	SetRandomJitter,
+
 	// Density grid
 	SetDensityCellSize,
 	SetGaussianSigma,
