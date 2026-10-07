@@ -1,4 +1,8 @@
 #include "collision_resolver.h"
+#include "collision_vector.h"
+#include <cstdint>
+#include <spatial_grid/fixed_span.h>
+#include <spatial_grid/simple_spatial_grid.h>
 
 // This function runs the collision detection for all grid cells in parallel using the thread pool
 void CollisionResolver::run_collision_detection()
@@ -36,54 +40,54 @@ void CollisionResolver::detect_collisions_for_grid_cell(const int grid_cell_id, 
 	// to collect all the particles around and in this cell into packed entries and then for each particle in this cell, check for collisions
 	// than it is to go over each particle and re-calculate its nearby neighbours
 	return;
-		if (spatial_grid_.cell_capacities[grid_cell_id] == 0)
-			return;
+	if (spatial_grid_.cell_capacities[grid_cell_id] == 0)
+		return;
 
-		packed_entries.clear();
+	packed_entries.clear();
 
-		const int cell_index_x = grid_cell_id % spatial_grid_.CellsX;
-		const int cell_index_y = grid_cell_id / spatial_grid_.CellsX;
+	const int cell_index_x = grid_cell_id % spatial_grid_.CellsX;
+	const int cell_index_y = grid_cell_id / spatial_grid_.CellsX;
 
-		const uint8_t self_size = spatial_grid_.cell_capacities[grid_cell_id];
-		const auto* self_contents = &spatial_grid_.grid[grid_cell_id * spatial_grid_.cell_max_capacity];
+	const uint8_t self_size = spatial_grid_.cell_capacities[grid_cell_id];
+	const auto* self_contents = &spatial_grid_.grid[grid_cell_id * spatial_grid_.cell_max_capacity];
 
-		const float cell_w = spatial_grid_.cell_width;
-		const float cell_h = spatial_grid_.cell_height;
-		const float cell_min_x = cell_index_x * cell_w;
-		const float cell_min_y = cell_index_y * cell_h;
-		const float cell_max_x = cell_min_x + cell_w;
-		const float cell_max_y = cell_min_y + cell_h;
+	const float cell_w = spatial_grid_.cell_width;
+	const float cell_h = spatial_grid_.cell_height;
+	const float cell_min_x = cell_index_x * cell_w;
+	const float cell_min_y = cell_index_y * cell_h;
+	const float cell_max_x = cell_min_x + cell_w;
+	const float cell_max_y = cell_min_y + cell_h;
 
-		for (uint8_t idx = 0; idx < self_size; ++idx)
-			packed_entries.add(self_contents[idx]);
+	for (uint8_t idx = 0; idx < self_size; ++idx)
+		packed_entries.add(self_contents[idx]);
 
-		const int self_only_count = packed_entries.count;
+	const int self_only_count = packed_entries.count;
 
-		bool border_flags[cell_max_capacity] = {};
-		uint8_t border_count = 0;
+	bool border_flags[cell_max_capacity] = {};
+	uint8_t border_count = 0;
 
-		for (uint8_t idx = 0; idx < self_size; ++idx)
-		{
-			
-		}
+	for (uint8_t idx = 0; idx < self_size; ++idx)
+	{
 
-		if (border_count > 0)
-		{
-			update_nearby_container(cell_index_x + 1, cell_index_y, packed_entries);
-			update_nearby_container(cell_index_x - 1, cell_index_y + 1, packed_entries);
-			update_nearby_container(cell_index_x, cell_index_y + 1, packed_entries);
-			update_nearby_container(cell_index_x + 1, cell_index_y + 1, packed_entries);
-		}
-
-		for (uint8_t idx = 0; idx < self_size; ++idx)
-		{
-			const packed_entry pid = self_contents[idx];
-			//if (border_flags[idx])
-			//	check_collisions_for_body(pid, packed_entries, collision_vector, -1);
-			//else
-			//	check_collisions_for_body(pid, packed_entries, collision_vector, self_only_count);
-		}
 	}
+
+	if (border_count > 0)
+	{
+		update_nearby_container(cell_index_x + 1, cell_index_y, packed_entries);
+		update_nearby_container(cell_index_x - 1, cell_index_y + 1, packed_entries);
+		update_nearby_container(cell_index_x, cell_index_y + 1, packed_entries);
+		update_nearby_container(cell_index_x + 1, cell_index_y + 1, packed_entries);
+	}
+
+	for (uint8_t idx = 0; idx < self_size; ++idx)
+	{
+		const packed_entry pid = self_contents[idx];
+		//if (border_flags[idx])
+		//	check_collisions_for_body(pid, packed_entries, collision_vector, -1);
+		//else
+		//	check_collisions_for_body(pid, packed_entries, collision_vector, self_only_count);
+	}
+}
 
 
 void CollisionResolver::update_nearby_container(const int32_t neighbour_index_x, const int32_t neighbour_index_y, FixedSpan<packed_entry>& packed_entries)
@@ -135,9 +139,10 @@ void CollisionResolver::check_collisions_for_body(const UnpackedEntry& self_entr
 		const float radius_sum = rad_a + rad_b;
 		const float length_sq = dx * dx + dy * dy;
 
-		if (length_sq < radius_sum * radius_sum && length_sq >= 0.01f)
+		if (length_sq < radius_sum * radius_sum)
 		{
 			collision_vector.add(collision_body_id, id);
 		}
+
 	}
 }

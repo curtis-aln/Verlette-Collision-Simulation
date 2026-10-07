@@ -24,7 +24,7 @@ struct ResolutionSettings
 {
 	inline static uint32_t cells_x = (1u << 9); // for morton indexing, must be a power of 2
 	inline static uint32_t cells_y = cells_x;     // square worlds
-	inline static const uint32_t cell_max_capacity = 12; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
+	inline static const uint32_t cell_max_capacity = 18; // maximum number of particles per cell, must be less than 256, but really shouldnt be any greater than 6
 
 	inline static float correction_factor = 0.3f; // how much of the overlap is corrected each frame, 0.2 is a good value, 1.0 is too much and causes jittering
 	inline static float restitution = .997f; // how much of the velocity is retained after a collision, 1.0 is perfectly elastic, 0.0 is perfectly inelastic
@@ -84,6 +84,8 @@ public:
 	// resolves all collisions in the collision_indexes vector, this is done in parallel using the thread pool
 	void handle_collision_resolutions();
 
+
+
 	// Closes The Threads safely
 	void close_program();
 
@@ -101,6 +103,6 @@ private:
 	void check_collisions_for_body(const UnpackedEntry& self_entry, const FixedSpan<UnpackedEntry>& packed_entries, CollisionVector& collision_vector, int check_count = -1);
 
 	// Collision Resolution Functions
-	void resolve_collision_vector_collisions(CollisionVector& collision_vector);
+	void resolve_collision_vector_collisions(const CollisionVector& cv, bool reverse);
 	void resolve_pair_collision(Entity* particle_a, Entity* particle_b);
 };

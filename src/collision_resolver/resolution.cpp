@@ -1,5 +1,7 @@
 #include "collision_resolver.h"
 #include "collision_vector.h"
+#include <cmath>
+#include <cstdint>
 #include <particle_system/particle.h>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/System/Vector2.hpp>
@@ -10,6 +12,24 @@
 thread_local FixedSpan<packed_entry> CollisionResolver::tl_packed_entries_{ packed_entries_max };
 
 thread_local FixedSpan<UnpackedEntry> CollisionResolver::tl_unpacked_entries_{ packed_entries_max };
+
+namespace
+{
+	// 8 unit axes, so no normalise is needed when particles are coincident
+	constexpr float kAx[8] = { 1.f, 0.70710678f, 0.f, -0.70710678f, -1.f, -0.70710678f,  0.f,  0.70710678f };
+	constexpr float kAy[8] = { 0.f, 0.70710678f, 1.f,  0.70710678f,  0.f, -0.70710678f, -1.f, -0.70710678f };
+
+	inline uint32_t xorshift32(uint32_t& s) { s ^= s << 13; s ^= s >> 17; s ^= s << 5; return s; }
+}
+
+namespace
+{
+	// maps iteration k to the visited index, reversed on odd frames
+	constexpr int visit_index(int k, int size, bool reverse)
+	{
+		return reverse ? size - 1 - k : k;
+	}
+}
 
 
 CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities,
@@ -36,48 +56,51 @@ CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* 
 
 void CollisionResolver::handle_collision_resolutions()
 {
-	//debug_collision_duplicates(); // debugging
+	const bool reverse = (resolution_frame_ ^= 1);
+	const int  n = static_cast<int>(collision_indexes_.size());
 
-	for (CollisionVector& collision_vector : collision_indexes_)
-	{
-		resolve_collision_vector_collisions(collision_vector);
-	}
+	for (int t = 0; t < n; ++t)
+		resolve_collision_vector_collisions(collision_indexes_[visit_index(t, n, reverse)], reverse);
 }
 
-void CollisionResolver::resolve_collision_vector_collisions(CollisionVector& collision_vector)
+void CollisionResolver::resolve_collision_vector_collisions(const CollisionVector& cv, bool reverse)
 {
-	const int size = collision_vector.size();
-	if (size == 0)
-		return;
+	const int size = cv.size();
 
-	Entity* particle_a = nullptr;
-	int cached_id = -1;
-
-	for (CollisionPair pair : collision_vector)
+	for (int k = 0; k < size; ++k)
 	{
-		if (pair.index_a != cached_id)
-		{
-			particle_a = collision_bodies_->at(pair.index_a);
-			cached_id = pair.index_a;
-		}
-
-		resolve_pair_collision(particle_a, collision_bodies_->at(pair.index_b));
+		const CollisionPair p = cv[visit_index(k, size, reverse)];
+		resolve_pair_collision(collision_bodies_->at(p.index_a), collision_bodies_->at(p.index_b));
 	}
 }
-
 
 void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
 {
 
 	float rad_a = particle_a->radius_; // Todo - dynamic radii
 	float rad_b = particle_b->radius_;
+	const float rad_sum = rad_a + rad_b;
 
-	// Collision resolution
-	sf::Vector2f direction = particle_a->position_ - particle_b->position_;
+	const sf::Vector2f d = particle_a->position_ - particle_b->position_;
+	const float d2 = d.x * d.x + d.y * d.y;
+	if (d2 >= rad_sum * rad_sum) return;            // not touching: no sqrt, no work
 
-	float distance = direction.length();
-	if (distance < 1e-6f) return;
-	sf::Vector2f direction_normal = direction / distance;
+
+	float nx, ny, distance;
+	if (d2 < 1e-8f) [[unlikely]]
+	{
+		static thread_local uint32_t s = 0x9E3779B9u;
+		const uint32_t k = xorshift32(s) & 7u;       // random axis from table
+		nx = kAx[k]; ny = kAy[k]; distance = 0.f;
+	}
+	else
+	{
+		distance = std::sqrt(d2);
+		const float inv = 1.f / distance;
+		nx = d.x * inv; ny = d.y * inv;
+	}
+
+	sf::Vector2f direction_normal = d / distance;
 
 	const float local_diam = rad_a + rad_b;
 	const float overlap = distance - local_diam;
