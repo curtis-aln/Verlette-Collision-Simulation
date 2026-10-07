@@ -98,12 +98,12 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
 	section_header("ENVIRONMENT SETTINGS");
 	toggle(ctx, "Surface Gravity", &WorldToggles::surface_gravity);
 	if (ctx.toggles.surface_gravity) // inline slider to control strength of surface gravity
-		if (ImGui::SliderFloat("##surface_gravity_strength", &surface_gravity_const, 0.f, 0.5f, "Surface Gravity Strength: %.3f"))
+		if (ImGui::SliderFloat("##surface_gravity_strength", &surface_gravity_const, 0.f, 0.2f, "Surface Gravity Strength: %.3f"))
 			ctx.push({ CommandType::SetSurfaceGravity,{}, surface_gravity_const, 0 });
 
 	toggle(ctx, "Central Gravity", &WorldToggles::central_gravity);
 	if (ctx.toggles.central_gravity) // inline slider to control strength of central gravity
-		if (ImGui::SliderFloat("##central_gravity_strength", &central_gravity_const, 0.f, 10000000.f, "Central Gravity Strength: %.3f"))
+		if (ImGui::SliderFloat("##central_gravity_strength", &central_gravity_const, 0.f, 50000000.f, "Central Gravity Strength: %.3f"))
 			ctx.push({ CommandType::SetCentralGravity,{}, central_gravity_const, 0 });
 
 	toggle(ctx, "Random Jitter", &WorldToggles::random_jitter);

@@ -76,8 +76,8 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
 		{ static_cast<int>(screen_width_), 0 }).x;
 	const float visible_world_width = right - left;
 
-	const float transition_thresh_begin = 2900.f * ParticleSettings::particle_radius_min;
-	const float transition_thresh_end = 3100.f * ParticleSettings::particle_radius_min;
+	const float transition_thresh_begin = 3500.f * ParticleSettings::particle_radius_min;
+	const float transition_thresh_end = 4800.f * ParticleSettings::particle_radius_min;
 	const float diff = transition_thresh_end - transition_thresh_begin;
 
 	const auto& tgl = snapshot.toggles;
@@ -117,12 +117,12 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
 void PPS_Renderer::render_heat_map(const SimSnapshot& snapshot,
 	const Camera& camera, const float alpha)
 {
-	// turning a vector of sf::Vector2fs into two x and y vectors
-	auto* vec2f_vector = &snapshot.render.positions;
-
-
 	heatmap.clear();
-	heatmap.scatter2f(snapshot.render.positions, camera.m_view_);
+	heatmap.scatter_particles(snapshot.render.positions,
+		snapshot.render.colors,
+		snapshot.render.radii,
+		snapshot.stats.cell_particle_count,
+		camera.m_view_);
 	heatmap.upload();
 	heatmap.draw(*window_, static_cast<uint8_t>(alpha));
 }
