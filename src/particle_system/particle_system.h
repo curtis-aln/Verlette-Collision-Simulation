@@ -19,6 +19,20 @@
 #include <vector>
 
 
+struct ParticleStep
+{
+	float x0, y0, x1, y1;       // bounds edges (before the radius buffer)
+	float cx, cy;               // bounds centre
+	float drag;
+	float gravity_k, softening_sq;
+	float surface_gravity;      // 0 when the toggle is off
+	float jitter;
+	float restitution, density;
+	float max_ke;
+	bool  central_gravity, jitter_on;
+};
+
+
 // This class is resonsible for the updating and rendering of the particles in the simulation
 class ParticleManager : ParticleSettings
 {
@@ -37,12 +51,16 @@ class ParticleManager : ParticleSettings
 
 	std::vector<Entity*> active_entities;
 
+	ParticleStep particle_step_{};
+
 public:
 	RenderData render{};
 	WorldToggles toggles{};
 	WorldStatistics stats{};
 
 	ParticleManager(sf::RenderWindow* window, sf::Rect<float>* bounds);
+
+	void update_particle_step();
 
 	void init_entities();
 
@@ -57,7 +75,7 @@ public:
 	void init_updating_tp_jobs();
 
 	void update_particles();
-	void update_particle(Entity* entity, const sf::Vector2f& bounds_pos, const sf::Vector2f& bounds_size);
+	void update_particle(Entity* e);
 	void render_grid(sf::Vector2f query_pos);
 	void fill_snapshot(SimSnapshot& snapshot);
 

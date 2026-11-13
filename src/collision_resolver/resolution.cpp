@@ -74,69 +74,42 @@ void CollisionResolver::resolve_collision_vector_collisions(const CollisionVecto
 	}
 }
 
-void CollisionResolver::resolve_pair_collision(Entity* particle_a, Entity* particle_b)
+void CollisionResolver::resolve_pair_collision(Body* a, Body* b)
 {
+	const float inv_mass_a = a->inv_mass();
+	const float inv_mass_b = b->inv_mass();
+	const float inv_mass_sum = inv_mass_a + inv_mass_b;
+	assert(a->get_mass() > 0.f && b->get_mass() > 0.f);   // both massless/recycled: nothing to resolve
 
-	float rad_a = particle_a->radius_; // Todo - dynamic radii
-	float rad_b = particle_b->radius_;
-	const float rad_sum = rad_a + rad_b;
+	const float contact_dist = a->get_radius() + b->get_radius();
+	const sf::Vector2f offset = a->get_pos() - b->get_pos();   // points B -> A
+	const float dist_sq = offset.lengthSquared();
+	if (dist_sq >= contact_dist * contact_dist) return;
 
-	const sf::Vector2f d = particle_a->position_ - particle_b->position_;
-	const float d2 = d.x * d.x + d.y * d.y;
-	if (d2 >= rad_sum * rad_sum) return;            // not touching: no sqrt, no work
+	// One sqrt. Exactly coincident bodies get an arbitrary normal instead of being skipped.
+	float dist = std::sqrt(dist_sq);
+	sf::Vector2f normal{ 1.f, 0.f };
+	if (dist > 1e-6f) normal = offset / dist; else dist = 0.f;
 
+	// Positional correction: the lighter body moves further
+	const float penetration = contact_dist - dist;
+	const sf::Vector2f correction = normal * (penetration * correction_factor / inv_mass_sum);
+	a->translate(correction * inv_mass_a);
+	b->translate(-correction * inv_mass_b);
 
-	float nx, ny, distance;
-	if (d2 < 1e-8f) [[unlikely]]
-	{
-		static thread_local uint32_t s = 0x9E3779B9u;
-		const uint32_t k = xorshift32(s) & 7u;       // random axis from table
-		nx = kAx[k]; ny = kAy[k]; distance = 0.f;
-	}
-	else
-	{
-		distance = std::sqrt(d2);
-		const float inv = 1.f / distance;
-		nx = d.x * inv; ny = d.y * inv;
-	}
+	// Velocity resolution: skip if already separating
+	const float closing_speed = (a->get_vel() - b->get_vel()).dot(normal);   // < 0 when approaching
+	if (closing_speed >= 0.f) return;
 
-	sf::Vector2f direction_normal = d / distance;
+	// J = (1 + e) * |v_n| / (1/m_a + 1/m_b): this is the reduced mass again
+	const float j = -(1.f + restitution) * closing_speed / inv_mass_sum;
+	const sf::Vector2f impulse = normal * j;
 
-	const float local_diam = rad_a + rad_b;
-	const float overlap = distance - local_diam;
+	a->apply_impulse(impulse);    // dv_a = J / m_a
+	b->apply_impulse(-impulse);    // dv_b = J / m_b, opposite direction
 
-	const sf::Vector2f collision_resolution = direction_normal * (overlap * 0.5f * correction_factor);
-	particle_a->position_ -= collision_resolution;
-	particle_b->position_ += collision_resolution;
-
-	// Velocity resolution
-	sf::Vector2f vel_a = particle_a->velocity_;
-	sf::Vector2f vel_b = particle_b->velocity_;
-
-	float mass_a = rad_a * rad_a * density;
-	float mass_b = rad_b * rad_b * density;
-
-
-	// Each particle gets a share weighted by the *other* particle's mass fraction
-	const sf::Vector2f rel_vel = vel_a - vel_b;
-	const float rel_vel_n = rel_vel.x * direction_normal.x + rel_vel.y * direction_normal.y;
-
-	if (rel_vel_n > 0.f)
-		return;  // positive = separating along A←B axis, skip
-
-	const float impulse_scalar = (1.0f + restitution) * rel_vel_n;
-	// rel_vel_n < 0 (approaching), so impulse_scalar < 0 — correct for the -= / += below
-
-	const sf::Vector2f impulse = direction_normal * impulse_scalar;
-
-	const float total_mass = mass_a + mass_b;
-	const float inv_total = 1.0f / total_mass;
-
-	const sf::Vector2f resolution_a = impulse * (mass_b * inv_total);
-	const sf::Vector2f resolution_b = impulse * (mass_a * inv_total);
-
-	particle_a->velocity_ -= resolution_a;
-	particle_b->velocity_ += resolution_b;
+	a->impulse_ += j;              // equal and opposite, so both bodies took the same magnitude
+	b->impulse_ += j;
 }
 
 

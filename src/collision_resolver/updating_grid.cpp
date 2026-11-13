@@ -14,11 +14,11 @@ void CollisionResolver::add_particles_to_grid()
     int i = 0;
     for (Entity* entity : *collision_bodies_)
     {
-        const sf::Vector2f pos = entity->position_;
+        const sf::Vector2f pos = entity->get_pos();
 
         // only add this particle to the grid if it matches this frame's parity
         //if ((i & 1) == frame_parity)
-        spatial_grid_.add_object(pos.x, pos.y, entity->radius_, i);
+        spatial_grid_.add_object(pos.x, pos.y, entity->get_radius(), i);
 
         ++i;
     }
@@ -40,7 +40,7 @@ void CollisionResolver::update_particles_grid_indexes()
 
     for (int obj_id = 0; obj_id < n; ++obj_id)
     {
-        const sf::Vector2f pos = collision_bodies_->at(obj_id)->position_;
+        const sf::Vector2f pos = collision_bodies_->at(obj_id)->get_pos();
 
         const cell_idx new_cell = calcZOrder(
             static_cast<uint16_t>(pos.x * inv_cw),

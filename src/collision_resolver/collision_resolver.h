@@ -104,5 +104,5 @@ private:
 
 	// Collision Resolution Functions
 	void resolve_collision_vector_collisions(const CollisionVector& cv, bool reverse);
-	void resolve_pair_collision(Entity* particle_a, Entity* particle_b);
+	void resolve_pair_collision(Body* particle_a, Body* particle_b);
 };

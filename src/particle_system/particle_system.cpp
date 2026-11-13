@@ -27,14 +27,41 @@ ParticleManager::ParticleManager(sf::RenderWindow* window, sf::Rect<float>* boun
 	collision_resolver_.add_particles_to_grid();
 }
 
+
+void ParticleManager::update_particle_step()
+{
+	ParticleStep& s = particle_step_;
+	const sf::Vector2f bounds_pos = bounds_->position;
+	const sf::Vector2f bounds_size = bounds_->size;
+
+	s.x0 = bounds_pos.x;                    s.y0 = bounds_pos.y;
+	s.x1 = bounds_pos.x + bounds_size.x;    s.y1 = bounds_pos.y + bounds_size.y;
+	s.cx = bounds_pos.x + bounds_size.x * 0.5f;
+	s.cy = bounds_pos.y + bounds_size.y * 0.5f;
+	s.drag = friction;
+	s.central_gravity = toggles.central_gravity;
+	s.gravity_k = central_gravity_const;
+	s.softening_sq = 250.f * 250.f;      // see note 2
+	s.surface_gravity = toggles.surface_gravity ? surface_gravity_const : 0.f;
+	s.jitter_on = toggles.random_jitter;
+	s.jitter = random_jitter_const;
+	s.restitution = ResolutionSettings::restitution;
+	s.density = ResolutionSettings::density;
+
+	const float max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
+	const float max_mass = ParticleSettings::particle_radius_max * ParticleSettings::particle_radius_max * s.density;
+	s.max_ke = 0.5f * max_mass * max_speed_sq;
+}
+
 void ParticleManager::init_entities()
 {
 	std::cout << "init entities\n";
 	for (int i = 0; i < ParticleSettings::initial_particle_count; ++i)
 	{
 		Entity* entity = collision_bodies_.emplace(true);
-		entity->position_ = Random::rand_pos_in_rect(*bounds_);
-		create_random_entity(entity, entity->position_);
+		entity->id_ = static_cast<BodyId>(i);
+		entity->set_pos(Random::rand_pos_in_rect(*bounds_));
+		create_random_entity(entity, entity->get_pos());
 	}
 }
 
@@ -154,7 +181,7 @@ void ParticleManager::init_updating_tp_jobs()
 			{
 				for (int i = begin; i < end; ++i)
 				{
-					update_particle(active_entities[i], bounds_pos, bounds_size);
+					update_particle(active_entities[i]);
 				}
 			});
 	}
@@ -166,6 +193,8 @@ void ParticleManager::init_updating_tp_jobs()
 
 void ParticleManager::update_particles()
 {
+	update_particle_step();
+
 	frame_rate_smoothing_.update_frame_rate();
 	stats.updating_fps = frame_rate_smoothing_.get_average_frame_rate();
 	stats.iterations_++;
@@ -183,75 +212,60 @@ void ParticleManager::update_particles()
 	updating_thread_pool_.run_and_wait();
 }
 
-void ParticleManager::update_particle(Entity* entity, const sf::Vector2f& bounds_pos, const sf::Vector2f& bounds_size)
+void ParticleManager::update_particle(Entity* e)
 {
+	const ParticleStep& s = particle_step_;
 
-	// Read all entity data upfront, before any function calls
-	sf::Vector2f pos = entity->position_;
-	sf::Vector2f vel = entity->velocity_;
-	const float  radius = entity->radius_;       // hoisted
-	const sf::Color rest = entity->color_rest_;
-	const sf::Color cmax = entity->color_max_;
+	// 1. Mass-independent accelerations (gravity, jitter), queued together with anything
+	//    already applied this tick (repel_system_from_point, collision impulses).
+	float ax = 0.f;
+	float ay = s.surface_gravity;
 
-	pos += vel;
-	vel *= friction;
-
-	// attraction to the center of the world using the gravity equation
-	if (toggles.central_gravity)
+	if (s.central_gravity)
 	{
-		const sf::Vector2f center = bounds_pos + bounds_size * 0.5f;
-		constexpr float softening_sq = 250.f * 250.f;  // (5 px)^2, tune to taste
-
-		const sf::Vector2f to_center = center - pos;
-		const float d2 = to_center.lengthSquared() + softening_sq;
-		const float inv_d = 1.f / std::sqrt(d2);
-
 		// a = G * r_vec / (r^2 + eps^2)^(3/2)
-		vel += to_center * (central_gravity_const * inv_d * inv_d * inv_d);
+		const sf::Vector2f& p = e->get_pos();
+		const float dx = s.cx - p.x;
+		const float dy = s.cy - p.y;
+		const float inv_d = 1.f / std::sqrt(dx * dx + dy * dy + s.softening_sq);
+		const float k = s.gravity_k * inv_d * inv_d * inv_d;
+		ax += dx * k;
+		ay += dy * k;
 	}
 
-	if (toggles.surface_gravity)
+	if (s.jitter_on)
 	{
-		vel += sf::Vector2f(0, surface_gravity_const); // gravity
+		const sf::Vector2f j = Random::rand_vector(-s.jitter, s.jitter);
+		ax += j.x;
+		ay += j.y;
 	}
 
-	if (toggles.random_jitter)
+	e->apply_acceleration({ ax, ay });
+
+	// 2. Integrate (vel += acc; pos += vel; acc = 0), then mass-aware drag.
+	e->update_physics();
+	e->apply_drag(s.drag);
+
+	// 3. Walls: only touch the body when it is actually outside the bounds.
+	const float radius = e->get_radius();
+	const float x_min = s.x0 + radius, x_max = s.x1 - radius;
+	const float y_min = s.y0 + radius, y_max = s.y1 - radius;
+
+	const sf::Vector2f pos = e->get_pos();
+	sf::Vector2f vel = e->get_vel();
+
+	if (pos.x < x_min || pos.x > x_max || pos.y < y_min || pos.y > y_max)
 	{
-		vel += Random::rand_vector(-random_jitter_const, random_jitter_const); // random jitter
+		if ((pos.x < x_min && vel.x < 0.f) || (pos.x > x_max && vel.x > 0.f)) vel.x *= -s.restitution;
+		if ((pos.y < y_min && vel.y < 0.f) || (pos.y > y_max && vel.y > 0.f)) vel.y *= -s.restitution;
+
+		e->set_vel(vel);
+		e->set_pos({ std::min(std::max(pos.x, x_min), x_max),    // not std::clamp: UB if min > max
+					 std::min(std::max(pos.y, y_min), y_max) });
 	}
 
-	// Boundary Check
-	const float buffer = entity->radius_;
-
-	const float x_min = bounds_pos.x + buffer;
-	const float y_min = bounds_pos.y + buffer;
-	const float x_max = bounds_pos.x + bounds_size.x - buffer;
-	const float y_max = bounds_pos.y + bounds_size.y - buffer;
-
-	if ((pos.x < x_min && vel.x < 0.f) || (pos.x > x_max && vel.x > 0.f))
-	{
-		vel.x = -vel.x;
-		vel.x *= ResolutionSettings::restitution; // apply restitution to the velocity when bouncing off the wall
-	}
-	if ((pos.y < y_min && vel.y < 0.f) || (pos.y > y_max && vel.y > 0.f))
-	{
-		vel.y = -vel.y;
-		vel.y *= ResolutionSettings::restitution; // apply restitution to the velocity when bouncing off the wall
-	}
-
-	// Clamp position
-	pos.x = std::clamp(pos.x, x_min, x_max);
-	pos.y = std::clamp(pos.y, y_min, y_max);
-
-	static const float max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
-	const float max_mass = ParticleSettings::particle_radius_max * ParticleSettings::particle_radius_max * ResolutionSettings::density; // approximate mass with max radius
-	const float mass = entity->radius_ * entity->radius_ * ResolutionSettings::density; // approximate mass with radius
-	const float max_kinetic_energy = 0.5f * max_mass * max_speed_sq; // approximate mass with max radius
-	entity->color_ = velocity_to_color(entity->color_rest_, entity->color_max_, vel.lengthSquared(), mass, max_kinetic_energy);
-
-	// Write back
-	entity->position_ = pos;
-	entity->velocity_ = vel;
+	e->color_ = velocity_to_color(e->color_rest_, e->color_max_,
+		e->get_mass(), vel.x * vel.x + vel.y * vel.y, s.max_ke);
 }
 
 
@@ -267,7 +281,7 @@ void ParticleManager::repel_system_from_point(const sf::Vector2f point, const fl
 
 	for (Entity* entity : collision_bodies_)
 	{
-		sf::Vector2f pos = entity->position_;
+		sf::Vector2f pos = entity->get_pos();
 		sf::Vector2f rel = pos - point;
 		float dist_sq = rel.lengthSquared();
 
@@ -276,7 +290,7 @@ void ParticleManager::repel_system_from_point(const sf::Vector2f point, const fl
 
 		sf::Vector2f dir = rel.normalized();
 
-		entity->velocity_ += dir * magnitude;
+		entity->apply_acceleration(dir * magnitude);
 	}
 }
 
@@ -306,15 +320,18 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 
 void ParticleManager::create_random_entity(Entity* entity, sf::Vector2f position)
 {
-	entity->position_ = position;
-	entity->velocity_ = Random::rand_vector(-init_velocity_range, init_velocity_range);
+	entity->set_pos(position);
+	entity->set_vel(Random::rand_vector(-init_velocity_range, init_velocity_range));
 	entity->color_rest_ = color_rest;
 	entity->color_max_ = color_max;
 
 	const float hue_shift = Random::rand_range(0.f, hue_shift_range);
 	entity->color_rest_ = shift_hue(color_rest, hue_shift);
 	entity->color_max_ = shift_hue(color_max, hue_shift);
-	entity->radius_ = Random::rand_range(ParticleSettings::particle_radius_min, ParticleSettings::particle_radius_max);
+
+	const float r = Random::rand_range(ParticleSettings::particle_radius_min, ParticleSettings::particle_radius_max);
+	entity->set_radius(r);
+	entity->set_mass(r * r * ResolutionSettings::density);
 }
 
 sf::Color ParticleManager::get_rand_white_color()
@@ -357,8 +374,8 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 	for (int i = 0; i < n; ++i)
 	{
 		const Entity* e = collision_bodies_.at(i);
-		pos_dst[i] = e->position_;
+		pos_dst[i] = e->get_pos();
 		col_dst[i] = e->color_;
-		rad_dst[i] = e->radius_;
+		rad_dst[i] = e->get_radius();
 	}
 }
