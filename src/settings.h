@@ -23,6 +23,9 @@ struct SimulationSettings
 
 struct ParticleSettings
 {
+	inline static int sub_iterations = 1;
+
+
 	inline static const sf::Color color_rest = { 30, 60, 200 };
 	inline static const sf::Color color_max = { 255, 100, 0 };
 	inline static const float hue_shift_range = 40;

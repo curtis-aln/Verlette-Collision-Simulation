@@ -39,6 +39,8 @@ enum class CommandType
 	RandomizeSimulation,
 	ClearBeacons,
 	SetThreadCount,
+
+	SetSubIterations,
 };
 
 struct SimCommand

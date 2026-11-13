@@ -4,6 +4,7 @@
 #include <cassert>
 #include "fixed_span.h"
 #include <Imgui.h>
+#include <vector>
 
 // Memory Storage of the spatial hash grid
 // int64

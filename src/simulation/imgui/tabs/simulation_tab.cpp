@@ -27,6 +27,9 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
 	if (ImGui::SliderInt("##threads", &m_thread_count_, 1, 64))
 		ctx.push({ CommandType::SetThreadCount,{}, 0.f, m_thread_count_ });
 
+	if (ImGui::SliderInt("##subiterations", &m_sub_iterations_, 1, 40))
+		ctx.push({ CommandType::SetSubIterations, {}, 0.f, m_sub_iterations_ });
+
 	ImGui::Spacing();
 	ImGui::PushStyleColor(ImGuiCol_Text, { 0.38f, 0.38f, 0.50f, 1.f });
 	ImGui::TextWrapped("Changes take effect next frame. "
@@ -117,6 +120,7 @@ void SimulationTab::draw(const SimSnapshot& snap, SimCtx& ctx)
 
 	fps_row("Render FPS", snap.stats.fps);
 	fps_row("Update FPS", snap.stats.updating_fps);
+	fps_row("Iterations FPS", snap.stats.iterations_per_second);
 	stat_row("Sim tick", "%.3f s", snap.sim_tick_seconds);
 	stat_row("Iterations", "%d", snap.stats.iterations_);
 }

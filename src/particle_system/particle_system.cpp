@@ -1,5 +1,4 @@
 #include "../utilities/random.h"
-#include "particle.h"
 #include "particle_system.h"
 #include <algorithm>
 #include <cmath>
@@ -58,10 +57,10 @@ void ParticleManager::init_entities()
 	std::cout << "init entities\n";
 	for (int i = 0; i < ParticleSettings::initial_particle_count; ++i)
 	{
-		Entity* entity = collision_bodies_.emplace(true);
-		entity->id_ = static_cast<BodyId>(i);
-		entity->set_pos(Random::rand_pos_in_rect(*bounds_));
-		create_random_entity(entity, entity->get_pos());
+		Body* body = collision_bodies_.emplace(true);
+		body->id_ = static_cast<BodyId>(i);
+		body->set_pos(Random::rand_pos_in_rect(*bounds_));
+		create_random_entity(body, body->get_pos());
 	}
 }
 
@@ -128,30 +127,6 @@ sf::Color ParticleManager::shift_hue(const sf::Color& color, const float degrees
 	};
 }
 
-sf::Color ParticleManager::velocity_to_color(const sf::Color rest, const sf::Color max_color,
-	const float mass, const float speed_sq, const float max_kinetic_energy)
-{
-	// KE = 1/2 * m * v^2, still no sqrt needed
-	const float kinetic_energy = 0.5f * mass * speed_sq;
-
-	// Guard against a zero/negative max, and clamp t to [0, 1]
-	const float t = max_kinetic_energy > 0.f
-		? std::clamp(kinetic_energy / max_kinetic_energy, 0.f, 1.f)
-		: 0.f;
-
-	const int dr = max_color.r - rest.r;
-	const int dg = max_color.g - rest.g;
-	const int db = max_color.b - rest.b;
-	const int da = max_color.a - rest.a;
-
-	return sf::Color{
-		static_cast<uint8_t>(rest.r + static_cast<int>(dr * t)),
-		static_cast<uint8_t>(rest.g + static_cast<int>(dg * t)),
-		static_cast<uint8_t>(rest.b + static_cast<int>(db * t)),
-		static_cast<uint8_t>(rest.a + static_cast<int>(da * t))
-	};
-}
-
 void ParticleManager::init_updating_tp_jobs()
 {
 	// This funciton should be called every time a particle is added or removed from the system, 
@@ -161,7 +136,7 @@ void ParticleManager::init_updating_tp_jobs()
 
 	// Collect all active entities first
 	active_entities.clear();
-	for (Entity* e : collision_bodies_)
+	for (Body* e : collision_bodies_)
 		active_entities.push_back(e);
 
 	const sf::Vector2f bounds_pos = bounds_->position;
@@ -189,13 +164,25 @@ void ParticleManager::init_updating_tp_jobs()
 }
 
 
+void ParticleManager::update(SimSnapshot& write_snapshot, bool paused)
+{
+	frame_rate_smoothing_.update_frame_rate();
+	if (!paused)
+	{
+		for (int i = 0; i < ParticleSettings::sub_iterations; ++i)
+			update_particles();
+	}
 
+	
+	fill_snapshot(write_snapshot);
+
+}
 
 void ParticleManager::update_particles()
 {
+	
 	update_particle_step();
 
-	frame_rate_smoothing_.update_frame_rate();
 	stats.updating_fps = frame_rate_smoothing_.get_average_frame_rate();
 	stats.iterations_++;
 
@@ -210,9 +197,12 @@ void ParticleManager::update_particles()
 
 	// Multithreadding
 	updating_thread_pool_.run_and_wait();
+
+	iterations_clock_.update_frame_rate();
+	stats.iterations_per_second = iterations_clock_.get_average_frame_rate();
 }
 
-void ParticleManager::update_particle(Entity* e)
+void ParticleManager::update_particle(Body* e)
 {
 	const ParticleStep& s = particle_step_;
 
@@ -263,9 +253,6 @@ void ParticleManager::update_particle(Entity* e)
 		e->set_pos({ std::min(std::max(pos.x, x_min), x_max),    // not std::clamp: UB if min > max
 					 std::min(std::max(pos.y, y_min), y_max) });
 	}
-
-	e->color_ = velocity_to_color(e->color_rest_, e->color_max_,
-		e->get_mass(), vel.x * vel.x + vel.y * vel.y, s.max_ke);
 }
 
 
@@ -279,9 +266,9 @@ void ParticleManager::repel_system_from_point(const sf::Vector2f point, const fl
 {
 	static float rad_sq = radius * radius;
 
-	for (Entity* entity : collision_bodies_)
+	for (Body* body : collision_bodies_)
 	{
-		sf::Vector2f pos = entity->get_pos();
+		sf::Vector2f pos = body->get_pos();
 		sf::Vector2f rel = pos - point;
 		float dist_sq = rel.lengthSquared();
 
@@ -290,7 +277,7 @@ void ParticleManager::repel_system_from_point(const sf::Vector2f point, const fl
 
 		sf::Vector2f dir = rel.normalized();
 
-		entity->apply_acceleration(dir * magnitude);
+		body->apply_acceleration(dir * magnitude);
 	}
 }
 
@@ -298,19 +285,19 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 {
 	for (int i = 0; i < amount; ++i)
 	{
-		Entity* entity = collision_bodies_.add();
-		if (entity == nullptr)
+		Body* body = collision_bodies_.add();
+		if (body == nullptr)
 		{
-			entity = collision_bodies_.emplace(true);
+			body = collision_bodies_.emplace(true);
 		}
 
-		if (entity == nullptr)
+		if (body == nullptr)
 		{
-			std::cout << "ParticleManager::add_particles_at_point: Failed to create new particle entity.\n";
+			std::cout << "ParticleManager::add_particles_at_point: Failed to create new particle body.\n";
 			break;
 		}
 
-		create_random_entity(entity, point + Random::rand_vector(-radius, radius));
+		create_random_entity(body, point + Random::rand_vector(-radius, radius));
 	}
 
 	collision_resolver_.add_particles_to_grid();
@@ -318,34 +305,16 @@ void ParticleManager::add_particles_at_point(const sf::Vector2f point, const int
 	init_updating_tp_jobs();
 }
 
-void ParticleManager::create_random_entity(Entity* entity, sf::Vector2f position)
+void ParticleManager::create_random_entity(Body* body, sf::Vector2f position)
 {
-	entity->set_pos(position);
-	entity->set_vel(Random::rand_vector(-init_velocity_range, init_velocity_range));
-	entity->color_rest_ = color_rest;
-	entity->color_max_ = color_max;
-
-	const float hue_shift = Random::rand_range(0.f, hue_shift_range);
-	entity->color_rest_ = shift_hue(color_rest, hue_shift);
-	entity->color_max_ = shift_hue(color_max, hue_shift);
+	body->set_pos(position);
+	body->set_vel(Random::rand_vector(-init_velocity_range, init_velocity_range));
 
 	const float r = Random::rand_range(ParticleSettings::particle_radius_min, ParticleSettings::particle_radius_max);
-	entity->set_radius(r);
-	entity->set_mass(r * r * ResolutionSettings::density);
+	body->set_radius(r);
+	body->set_mass(r * r * ResolutionSettings::density);
 }
 
-sf::Color ParticleManager::get_rand_white_color()
-{
-	// depricated
-	// generates a random white color so that when particles are densily packed you can easily see each one
-	constexpr int min = 160;
-	constexpr int max = 255;
-	constexpr std::uint8_t transparency = 150;
-
-	const int col = Random::rand_range(min, max);
-	const std::uint8_t col_t = static_cast<std::uint8_t>(col);
-	return sf::Color{ col_t, col_t, col_t, transparency };
-}
 
 void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 {
@@ -355,27 +324,28 @@ void ParticleManager::fill_snapshot(SimSnapshot& snapshot)
 	snapshot.toggles = toggles;
 	snapshot.stats = stats;
 
-	// These should be done once at init / on entity count change, not every frame
+	// These should be done once at init / on body count change, not every frame
 	// snapshot.render.positions/colors/radii should already be the right size
 	// If you must guard it:
 	if (static_cast<int>(snapshot.render.positions.size()) != n)
 	{
 		snapshot.render.positions.resize(n);
-		snapshot.render.colors.resize(n);
 		snapshot.render.radii.resize(n);
+		snapshot.render.velocities.resize(n);
 	}
 
 	// Single pass, write directly into snapshot — no intermediate buffer
-	// If you have SoA (soa.x, soa.y, soa.radius) use that instead of entity pointers
+	// If you have SoA (soa.x, soa.y, soa.radius) use that instead of body pointers
 	sf::Vector2f* __restrict pos_dst = snapshot.render.positions.data();
-	sf::Color* __restrict col_dst = snapshot.render.colors.data();
+	sf::Vector2f* __restrict vel_dst = snapshot.render.velocities.data();
 	float* __restrict rad_dst = snapshot.render.radii.data();
 
 	for (int i = 0; i < n; ++i)
 	{
-		const Entity* e = collision_bodies_.at(i);
+		const Body* e = collision_bodies_.at(i);
 		pos_dst[i] = e->get_pos();
-		col_dst[i] = e->color_;
 		rad_dst[i] = e->get_radius();
+		vel_dst[i] = e->get_vel();
+
 	}
 }

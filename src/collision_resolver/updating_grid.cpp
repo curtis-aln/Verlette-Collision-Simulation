@@ -12,13 +12,13 @@ void CollisionResolver::add_particles_to_grid()
     spatial_grid_.entity_slot.assign(collision_bodies_->size(), 0);
 
     int i = 0;
-    for (Entity* entity : *collision_bodies_)
+    for (Body* body : *collision_bodies_)
     {
-        const sf::Vector2f pos = entity->get_pos();
+        const sf::Vector2f pos = body->get_pos();
 
         // only add this particle to the grid if it matches this frame's parity
         //if ((i & 1) == frame_parity)
-        spatial_grid_.add_object(pos.x, pos.y, entity->get_radius(), i);
+        spatial_grid_.add_object(pos.x, pos.y, body->get_radius(), i);
 
         ++i;
     }

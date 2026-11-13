@@ -5,6 +5,8 @@
 #include "../utilities/font.h"
 #include "simulation/context/sim_snapshot.h"
 #include "../utilities/camera.h"
+#include <collision_resolver/collision_resolver.h>
+
 
 struct SimSnapshot;
 
@@ -14,6 +16,10 @@ class PPS_Renderer
     sf::VertexArray vertex_array{ sf::PrimitiveType::Triangles };
 
     sf::RenderStates states{};
+
+    float max_speed_sq;
+    float max_mass;
+    float max_ke;
 
     // Debug rendering
     sf::CircleShape visual_radius_shape_;
@@ -42,5 +48,7 @@ public:
     void render_heat_map(const SimSnapshot& snapshot, const Camera& camera, float alpha);
     void render_particles(const SimSnapshot& snapshot, const Camera& camera, float alpha);
     void render_debug(const SimSnapshot& snapshot, const sf::Vector2f mouse_pos, const float mouse_radius);
+
+    sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float mass, const float speed_sq, const float max_kinetic_energy);
 
 };

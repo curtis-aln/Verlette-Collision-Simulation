@@ -2,7 +2,7 @@
 #include "collision_vector.h"
 #include <cmath>
 #include <cstdint>
-#include <particle_system/particle.h>
+#include <particle_system/body.h>
 #include <SFML/Graphics/Rect.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <spatial_grid/fixed_span.h>
@@ -32,7 +32,7 @@ namespace
 }
 
 
-CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities,
+CollisionResolver::CollisionResolver(sf::Rect<float>* bounds, o_vector<Body>* entities,
 	unsigned int init_thread_count, unsigned int max_collisions_per_thread, unsigned int max_particles)
 	:
 	collision_bodies_(entities), thread_count_(init_thread_count),

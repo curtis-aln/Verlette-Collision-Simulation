@@ -3,7 +3,6 @@
 #include "../settings.h"
 #include "../spatial_grid/spatial_grid_renderer.h"
 #include "../utilities/o_vector.hpp"
-#include "particle.h"
 
 #include "../collision_resolver/collision_resolver.h"
 
@@ -36,9 +35,11 @@ struct ParticleStep
 // This class is resonsible for the updating and rendering of the particles in the simulation
 class ParticleManager : ParticleSettings
 {
-	o_vector<Entity> collision_bodies_;
+	o_vector<Body> collision_bodies_;
 	sf::RenderWindow* window_;
 	sf::Rect<float>* bounds_;
+
+	FrameRateSmoothing<50> iterations_clock_{};
 
 	CollisionResolver collision_resolver_{ bounds_, &collision_bodies_, initial_thread_count,
 		maximum_particle_count, maximum_particle_count };
@@ -49,7 +50,7 @@ class ParticleManager : ParticleSettings
 	BarrierThreadPool updating_thread_pool_{ static_cast<int>(initial_thread_count) };
 	std::vector<std::function<void()>> updating_jobs_;
 
-	std::vector<Entity*> active_entities;
+	std::vector<Body*> active_entities;
 
 	ParticleStep particle_step_{};
 
@@ -69,13 +70,16 @@ public:
 	sf::Color shift_hue(const sf::Color& color, const float degrees);
 
 
-
-	sf::Color velocity_to_color(const sf::Color rest, const sf::Color max_color, const float mass, const float speed, const float max_speed);
-
 	void init_updating_tp_jobs();
 
+	void update(SimSnapshot& write_snapshot, bool paused);
+
+
+private:
 	void update_particles();
-	void update_particle(Entity* e);
+	void update_particle(Body* e);
+
+public:
 	void render_grid(sf::Vector2f query_pos);
 	void fill_snapshot(SimSnapshot& snapshot);
 
@@ -83,8 +87,6 @@ public:
 
 	void add_particles_at_point(const sf::Vector2f point, const int amount, const float radius);
 
-	void create_random_entity(Entity* entity, sf::Vector2f position);
+	void create_random_entity(Body* body, sf::Vector2f position);
 
-private:
-	sf::Color get_rand_white_color();
 };

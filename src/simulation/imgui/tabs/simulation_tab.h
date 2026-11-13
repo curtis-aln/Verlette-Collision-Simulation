@@ -13,6 +13,7 @@ public:
 
 private:
 	int   m_thread_count_ = static_cast<int>(ParticleSettings::initial_thread_count);
+	int   m_sub_iterations_ = ParticleSettings::sub_iterations;
 	bool  m_first_draw_ = true;
 
 	float restitution = ResolutionSettings::restitution;

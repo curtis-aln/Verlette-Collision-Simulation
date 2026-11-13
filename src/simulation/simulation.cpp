@@ -81,17 +81,12 @@ void Simulation::update()
 {
 	resolve_modifications();
 
-	if (!paused)
-	{
-		frameCount++;
-		particleManager.update_particles();
-	}
-
 	// Package results into the triple buffer. We keep publishing while paused
 	// so toggle changes made in the UI still show up in the snapshot.
 	SimSnapshot& snap = m_sim_buffer_.get_write_buffer();
 
-	particleManager.fill_snapshot(snap);
+	particleManager.update(snap, paused);
+
 	snap.stats.fps = static_cast<float>(clock_.get_average_frame_rate());
 
 	m_sim_buffer_.publish();
@@ -283,6 +278,10 @@ void Simulation::resolve_modifications()
 
 		case CommandType::SetRandomJitter:
 			ParticleSettings::random_jitter_const = cmd.float_val;
+			break;
+
+		case CommandType::SetSubIterations:
+			ParticleSettings::sub_iterations = cmd.int_val;
 			break;
 
 

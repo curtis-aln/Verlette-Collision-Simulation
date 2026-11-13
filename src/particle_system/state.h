@@ -65,6 +65,7 @@ struct WorldStatistics
 	int   cell_particle_count = 0;
 
 	float fps = 0.f;
+	float iterations_per_second = 0.f;
 	float updating_fps = 0.f;
 	int   iterations_ = 0;
 
@@ -77,13 +78,12 @@ struct WorldStatistics
 struct RenderData
 {
 	alignas(64) std::vector<sf::Vector2f> positions;
-	alignas(64) std::vector<sf::Color>    colors;
 	alignas(64) std::vector<float>        radii;
+	alignas(64) std::vector<sf::Vector2f> velocities;
 
 	void reserve(const int max_cells)
 	{
 		positions.resize(max_cells);
-		colors.resize(max_cells);
 		radii.resize(max_cells);
 	}
 };

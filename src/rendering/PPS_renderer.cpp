@@ -14,6 +14,8 @@
 #include <SFML/System/Vector2.hpp>
 #include <simulation/context/sim_snapshot.h>
 #include <utilities/camera.h>
+#include <particle_system/body.h>
+#include <collision_resolver/collision_resolver.h>
 
 // ── Global color scheme (definition) ──────────────────────────────────────────
 // Declared extern in particle_colors.h; defined here (render thread only).
@@ -41,6 +43,10 @@ inline sf::Texture generate_circle_texture(float radius)
 // ── Constructor ───────────────────────────────────────────────────────────────
 PPS_Renderer::PPS_Renderer(sf::RenderWindow* window) : window_(window)
 {
+	max_speed_sq = SimulationSettings::maxSpeed * SimulationSettings::maxSpeed;
+	max_mass = Body::radius_to_mass(ParticleSettings::particle_radius_max);
+	max_ke = 0.5f * max_mass * max_speed_sq;
+
 	constexpr int initial_vertex_count = ParticleSettings::initial_particle_count * 6;
 	vertex_array.resize(initial_vertex_count);
 
@@ -117,9 +123,18 @@ void PPS_Renderer::render(const SimSnapshot& snapshot, Camera& camera)
 void PPS_Renderer::render_heat_map(const SimSnapshot& snapshot,
 	const Camera& camera, const float alpha)
 {
+	std::vector<sf::Color> colors;
+	colors.resize(snapshot.stats.cell_particle_count);
+	for (int i = 0; i < snapshot.stats.cell_particle_count; ++i)
+	{
+		float mass = Body::radius_to_mass(snapshot.render.radii[i]);
+		float speed_sq = snapshot.render.velocities[i].lengthSquared();
+		colors[i] = velocity_to_color(ParticleSettings::color_rest, ParticleSettings::color_max, mass, speed_sq, max_ke);
+	}
+
 	heatmap.clear();
 	heatmap.scatter_particles(snapshot.render.positions,
-		snapshot.render.colors,
+		colors,
 		snapshot.render.radii,
 		snapshot.stats.cell_particle_count,
 		camera.m_view_);
@@ -138,7 +153,6 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
 	sf::Vector2i screen_pos = { static_cast<int>(screen_width_), static_cast<int>(screen_height_) };
 	const sf::Vector2f bottom_right = camera.mapPixelToCoords(screen_pos);
 
-
 	vertex_array.clear();
 
 	int particle_count = snapshot.stats.cell_particle_count;
@@ -153,7 +167,10 @@ void PPS_Renderer::render_particles(const SimSnapshot& snapshot,
 			px_v - r > bottom_right.x || py_v - r > bottom_right.y)
 			continue;
 
-		sf::Color col = snapshot.render.colors[i];
+		float mass = Body::radius_to_mass(snapshot.render.radii[i]);
+		float speed_sq = snapshot.render.velocities[i].lengthSquared();
+
+		sf::Color col = velocity_to_color(ParticleSettings::color_rest, ParticleSettings::color_max, mass, speed_sq, max_ke);
 		col.a = alpha;
 
 		vertex_array.append({ .position = { px_v - r, py_v - r }, .color = col, .texCoords = { 0.f, 0.f } });
@@ -173,4 +190,30 @@ void PPS_Renderer::render_debug(const SimSnapshot& snapshot,
 	const sf::Vector2f mouse_pos, const float mouse_radius)
 {
 
+}
+
+
+sf::Color PPS_Renderer::velocity_to_color(const sf::Color rest, const sf::Color max_color,
+	const float mass, const float speed_sq, const float max_kinetic_energy)
+{
+	// KE = 1/2 * m * v^2, still no sqrt needed
+	const float kinetic_energy = 0.5f * mass * speed_sq;
+
+	// Guard against a zero/negative max, and clamp t to [0, 1]
+	const float t = max_kinetic_energy > 0.f
+		? std::clamp(kinetic_energy / max_kinetic_energy, 0.f, 1.f)
+		: 0.f;
+
+	const int dr = max_color.r - rest.r;
+	const int dg = max_color.g - rest.g;
+	const int db = max_color.b - rest.b;
+	
+	const int da = max_color.a - rest.a;
+
+	return sf::Color{
+		static_cast<uint8_t>(rest.r + static_cast<int>(dr * t)),
+		static_cast<uint8_t>(rest.g + static_cast<int>(dg * t)),
+		static_cast<uint8_t>(rest.b + static_cast<int>(db * t)),
+		static_cast<uint8_t>(rest.a + static_cast<int>(da * t))
+	};
 }

@@ -6,7 +6,7 @@ It uses a spatial grid to efficiently detect potential collisions and resolves t
 Modify the Settings struct to change the grid size, cell capacity, and collision resolution parameters.
 */
 
-#include "../particle_system/particle.h" // The particle class Themselves
+#include "../particle_system/body.h" // The particle class Themselves
 #include "../spatial_grid/simple_spatial_grid.h" // Collision Detection
 #include "../utilities/o_vector.hpp" // Containing the particles
 #include "../utilities/thread_pool.h" // Multithreadding
@@ -43,7 +43,7 @@ class CollisionResolver : ResolutionSettings
 {
 	int thread_count_{};
 
-	o_vector<Entity>* collision_bodies_; // pointer to the particle vector, not owned by this class
+	o_vector<Body>* collision_bodies_; // pointer to the particle vector, not owned by this class
 
 	// The grid used for collision resolution
 	SimpleSpatialGrid spatial_grid_;
@@ -68,7 +68,7 @@ class CollisionResolver : ResolutionSettings
 	int resolution_frame_ = 0;  // toggles 0/1 each frame
 
 public:
-	CollisionResolver(sf::Rect<float>* bounds, o_vector<Entity>* entities,
+	CollisionResolver(sf::Rect<float>* bounds, o_vector<Body>* entities,
 		unsigned int init_thread_count, unsigned int max_collisions_per_thread, unsigned int max_particles);
 
 	// This function goes through each cell and updates their position in the grid rather than clearing the grid and re-adding all particles, this is more efficient
